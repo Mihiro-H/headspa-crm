@@ -18,6 +18,18 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
           >
             予約カレンダー
           </Link>
+          <Link
+            href="/admin/customers"
+            className="rounded-md px-3 py-2 text-sm text-neutral-700 hover:bg-primary-50"
+          >
+            顧客管理
+          </Link>
+          <Link
+            href="/admin/customer-statuses"
+            className="rounded-md px-3 py-2 text-sm text-neutral-700 hover:bg-primary-50"
+          >
+            ステータス設定
+          </Link>
         </nav>
       </aside>
       <main className="flex-1 bg-neutral-50 p-6">{children}</main>
