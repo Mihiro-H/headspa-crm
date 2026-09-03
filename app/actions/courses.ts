@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { filterActiveCampaigns, type ActiveCampaignRow } from "@/lib/reservation/active-campaigns";
+import { resolveCourseCampaigns } from "./course-campaigns";
 import { priceLineItem } from "@/lib/reservation/total-price";
 import type { GenderRestriction } from "@/lib/reservation/gender-restriction";
 
@@ -12,14 +12,6 @@ export interface CourseListItem {
   originalPrice: number;
   finalPrice: number;
   genderRestriction: GenderRestriction;
-}
-
-interface RawCampaign extends ActiveCampaignRow {
-  targetStoreId: number | null;
-}
-
-function eligibleForStore(campaigns: RawCampaign[], storeId: number): ActiveCampaignRow[] {
-  return campaigns.filter((c) => c.targetStoreId === null || c.targetStoreId === storeId);
 }
 
 export async function listCoursesForCategory(
@@ -37,20 +29,7 @@ export async function listCoursesForCategory(
   });
 
   return courses.map((course) => {
-    const courseCampaigns = course.campaignTargets.map((t) => t.campaign);
-    const categoryCampaigns = course.category.campaignTargets.map((t) => t.campaign);
-    const allCampaigns: RawCampaign[] = [...courseCampaigns, ...categoryCampaigns].map((c) => ({
-      campaignId: c.id,
-      priority: c.priority,
-      discountType: c.discountType,
-      discountValue: c.discountValue,
-      startDate: c.startDate,
-      endDate: c.endDate,
-      isPublished: c.isPublished,
-      targetStoreId: c.targetStoreId,
-    }));
-
-    const active = filterActiveCampaigns(eligibleForStore(allCampaigns, storeId), now);
+    const active = resolveCourseCampaigns(course, storeId, now);
     const priced = priceLineItem({ price: course.price, discountExempt: false, applicableCampaigns: active });
 
     return {

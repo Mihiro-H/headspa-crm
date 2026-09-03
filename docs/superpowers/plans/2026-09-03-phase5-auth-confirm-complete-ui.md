@@ -12,7 +12,7 @@
 
 **このPhaseで作らないもの:** LINE連携登録時の性別・生年月日追加入力画面（既存会員テーブルのLINE紐付けロジックはPhase 0で実装済みだが、UIは別タスク）、マイページ（`/mypage`）実装。
 
-> **既知の制限（このPhaseでは修正しない、フォローアップ推奨）:** Phase 2の`createTempHoldReservation`は`calculateReservationTotal`にキャンペーン情報を渡しておらず（`applicableCampaigns: []`固定）、実際に作成される仮予約の`totalPrice`にキャンペーン割引が反映されない。一方、Step3のコース選択画面（`listCoursesForCategory`）は正しくキャンペーン適用後価格を表示する。そのため現状、表示価格と実際に記録される価格が食い違う可能性がある。本Phaseの確認画面（Step8）はクライアント側の表示値（Step3で取得したキャンペーン適用後価格）を表示するため画面上は正しく見えるが、DBの`reservations.total_price`は割引前の金額になっている。次のフォローアップで`create-temp-hold.ts`にキャンペーン照会ロジック（`courses.ts`と同様の`filterActiveCampaigns`呼び出し）を追加する必要がある。
+> **既知の制限 → 解消済み:** Phase 5完了直後のフォローアップで修正済み。`create-temp-hold.ts`と`courses.ts`が別々にキャンペーン照会ロジックを持っていた重複を、共有ヘルパー`app/actions/course-campaigns.ts`の`resolveCourseCampaigns`に統合。`createTempHoldReservation`もこれを使ってキャンペーン適用後価格を正しく`totalPrice`に記録するようになった（テスト追加済み：全111テストパス）。
 
 > **実行環境に関する注記（継承）:** `.git`書き込み不可（コミットは後回し）、`.env`系ファイル読み書き不可、`npm run build`/`npm run dev`は不安定（`tsc --noEmit`/`eslint`/`vitest`を使う）。UIコンポーネントは軽量検証（tsc/eslintのみ）、データ取得・作成系Server ActionsはTDD、という前Phaseの方針を踏襲する。
 

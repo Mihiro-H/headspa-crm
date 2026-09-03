@@ -6,6 +6,7 @@ import { isSlotFree } from "@/lib/reservation/slot-conflict";
 import { calculateReservationTotal } from "@/lib/reservation/total-price";
 import { calculateCancellationDeadline } from "@/lib/reservation/cancellation-deadline";
 import { calculateTempHoldExpiry } from "@/lib/reservation/temp-hold";
+import { resolveCourseCampaigns } from "./course-campaigns";
 
 export interface CreateTempHoldParams {
   storeId: number;
@@ -24,7 +25,13 @@ export async function createTempHoldReservation(
   params: CreateTempHoldParams,
 ): Promise<CreateTempHoldResult> {
   const [course, options, staff] = await Promise.all([
-    prisma.course.findUniqueOrThrow({ where: { id: params.courseId } }),
+    prisma.course.findUniqueOrThrow({
+      where: { id: params.courseId },
+      include: {
+        campaignTargets: { include: { campaign: true } },
+        category: { include: { campaignTargets: { include: { campaign: true } } } },
+      },
+    }),
     prisma.option.findMany({ where: { id: { in: params.optionIds } } }),
     params.staffId
       ? prisma.staff.findUniqueOrThrow({ where: { id: params.staffId } })
@@ -59,17 +66,21 @@ export async function createTempHoldReservation(
     return { status: "slot_unavailable" };
   }
 
+  const now = new Date();
+  const activeCourseCampaigns = resolveCourseCampaigns(course, params.storeId, now);
+
   const pricing = calculateReservationTotal({
-    course: { price: course.price, discountExempt: false, applicableCampaigns: [] },
+    course: { price: course.price, discountExempt: false, applicableCampaigns: activeCourseCampaigns },
     options: options.map((o) => ({
       price: o.price,
       discountExempt: o.discountExempt,
+      // Campaigns can only target courses/categories in this schema, never
+      // options directly, so options never receive a campaign discount.
       applicableCampaigns: [],
     })),
     nominationFee,
   });
 
-  const now = new Date();
   const startLabel = minutesToLabel(params.startMinutes);
   const endLabel = minutesToLabel(endMinutes);
 
@@ -87,6 +98,22 @@ export async function createTempHoldReservation(
       totalPrice: pricing.totalPrice,
       tempHoldExpiresAt: calculateTempHoldExpiry(now),
       cancellationDeadline: calculateCancellationDeadline(targetDate),
+      items: {
+        create: [
+          {
+            itemType: "course" as const,
+            courseId: course.id,
+            appliedCampaignId: pricing.course.appliedCampaignId,
+            priceAtBooking: pricing.course.finalPrice,
+          },
+          ...pricing.options.map((o, idx) => ({
+            itemType: "option" as const,
+            optionId: options[idx].id,
+            appliedCampaignId: o.appliedCampaignId,
+            priceAtBooking: o.finalPrice,
+          })),
+        ],
+      },
     },
   });
 

@@ -18,6 +18,8 @@ const baseCourse = {
   id: 10,
   price: 10000,
   treatmentTimeMin: 60,
+  campaignTargets: [],
+  category: { campaignTargets: [] },
 };
 
 describe("createTempHoldReservation", () => {
@@ -72,6 +74,39 @@ describe("createTempHoldReservation", () => {
     expect(createArgs.data.totalPrice).toBe(11500);
   });
 
+  it("applies an active course campaign discount to the recorded total price", async () => {
+    vi.mocked(prisma.course.findUniqueOrThrow).mockResolvedValue({
+      ...baseCourse,
+      campaignTargets: [
+        {
+          campaign: {
+            id: 5,
+            priority: 0,
+            discountType: "percentage",
+            discountValue: 10,
+            startDate: new Date("2000-01-01T00:00:00Z"),
+            endDate: new Date("2999-01-01T00:00:00Z"),
+            isPublished: true,
+            targetStoreId: null,
+          },
+        },
+      ],
+    } as never);
+
+    const result = await createTempHoldReservation({
+      storeId: 1,
+      staffId: null,
+      courseId: 10,
+      optionIds: [],
+      reservationDate: "2026-09-10",
+      startMinutes: 660,
+    });
+
+    expect(result).toEqual({ status: "created", reservationId: 123 });
+    const createArgs = vi.mocked(prisma.reservation.create).mock.calls[0][0];
+    expect(createArgs.data.totalPrice).toBe(9000);
+  });
+
   it("refuses to create when the slot is no longer free", async () => {
     vi.mocked(prisma.reservation.findMany).mockResolvedValue([
       { startTime: new Date("1970-01-01T11:00:00Z"), endTime: new Date("1970-01-01T12:00:00Z") },
@@ -88,5 +123,26 @@ describe("createTempHoldReservation", () => {
 
     expect(result).toEqual({ status: "slot_unavailable" });
     expect(prisma.reservation.create).not.toHaveBeenCalled();
+  });
+
+  it("creates course and option line items alongside the reservation", async () => {
+    vi.mocked(prisma.option.findMany).mockResolvedValue([
+      { id: 20, price: 1500, durationMin: 15, discountExempt: true },
+    ] as never);
+
+    await createTempHoldReservation({
+      storeId: 1,
+      staffId: null,
+      courseId: 10,
+      optionIds: [20],
+      reservationDate: "2026-09-10",
+      startMinutes: 660,
+    });
+
+    const createArgs = vi.mocked(prisma.reservation.create).mock.calls[0][0];
+    expect(createArgs.data.items!.create).toEqual([
+      { itemType: "course", courseId: 10, appliedCampaignId: null, priceAtBooking: 10000 },
+      { itemType: "option", optionId: 20, appliedCampaignId: null, priceAtBooking: 1500 },
+    ]);
   });
 });
