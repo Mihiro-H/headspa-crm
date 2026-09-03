@@ -134,6 +134,8 @@ model Member {
   lineUserId     String?  @unique @map("line_user_id") @db.VarChar(100)
   visitCount     Int      @default(0) @map("visit_count")
   totalSpent     Int      @default(0) @map("total_spent")
+  emailNotificationEnabled Boolean @default(true) @map("email_notification_enabled")
+  lineNotificationEnabled  Boolean @default(true) @map("line_notification_enabled")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
