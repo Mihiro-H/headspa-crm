@@ -1,0 +1,427 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum AdminRole {
+  hq
+  manager
+  staff
+
+  @@map("admin_role")
+}
+
+model Store {
+  id                     Int      @id @default(autoincrement()) @map("store_id")
+  name                   String   @unique @db.VarChar(100)
+  address                String?  @db.VarChar(255)
+  phone                  String   @db.VarChar(20)
+  weekdayOpen            DateTime @map("weekday_open") @db.Time()
+  weekdayClose           DateTime @map("weekday_close") @db.Time()
+  weekendOpen            DateTime @map("weekend_open") @db.Time()
+  weekendClose           DateTime @map("weekend_close") @db.Time()
+  luxuryLastOrderWeekday DateTime @map("luxury_last_order_weekday") @db.Time()
+  luxuryLastOrderWeekend DateTime @map("luxury_last_order_weekend") @db.Time()
+  nearestStation         String?  @map("nearest_station") @db.VarChar(100)
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  staff          Staff[]
+  storeHolidays  StoreHoliday[]
+  admins         Admin[]
+  primaryMembers Member[]       @relation("MemberPrimaryStore")
+  campaigns      Campaign[]
+  reservations   Reservation[]
+
+  @@map("stores")
+}
+
+model StoreHoliday {
+  id          Int      @id @default(autoincrement()) @map("holiday_id")
+  storeId     Int      @map("store_id")
+  holidayDate DateTime @map("holiday_date") @db.Date
+  reason      String?  @db.VarChar(100)
+
+  store Store @relation(fields: [storeId], references: [id])
+
+  @@unique([storeId, holidayDate])
+  @@map("store_holidays")
+}
+
+model Staff {
+  id            Int      @id @default(autoincrement()) @map("staff_id")
+  storeId       Int      @map("store_id")
+  name          String   @db.VarChar(100)
+  photoUrl      String?  @map("photo_url") @db.VarChar(255)
+  bio           String?
+  nominationFee Int      @default(0) @map("nomination_fee")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  store         Store          @relation(fields: [storeId], references: [id])
+  shifts        StaffShift[]
+  reservations  Reservation[]
+  customerNotes CustomerNote[]
+
+  @@map("staff")
+}
+
+model StaffShift {
+  id        Int       @id @default(autoincrement()) @map("shift_id")
+  staffId   Int       @map("staff_id")
+  workDate  DateTime  @map("work_date") @db.Date
+  startTime DateTime? @map("start_time") @db.Time()
+  endTime   DateTime? @map("end_time") @db.Time()
+  isDayOff  Boolean   @default(false) @map("is_day_off")
+
+  staff Staff @relation(fields: [staffId], references: [id])
+
+  @@unique([staffId, workDate])
+  @@map("staff_shifts")
+}
+
+model Admin {
+  id           Int       @id @default(autoincrement()) @map("admin_id")
+  storeId      Int?      @map("store_id")
+  name         String    @db.VarChar(100)
+  email        String    @unique @db.VarChar(255)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  role         AdminRole
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  store            Store?            @relation(fields: [storeId], references: [id])
+  segmentCampaigns SegmentCampaign[]
+
+  @@map("admins")
+}
+
+enum Gender {
+  female
+  male
+  other
+
+  @@map("gender")
+}
+
+model CustomerStatus {
+  id            Int    @id @default(autoincrement()) @map("status_id")
+  name          String @unique @db.VarChar(50)
+  minVisitCount Int    @map("min_visit_count")
+  colorCode     String @map("color_code") @db.VarChar(7)
+  sortOrder     Int    @map("sort_order")
+
+  members Member[]
+
+  @@map("customer_statuses")
+}
+
+model Member {
+  id             Int      @id @default(autoincrement()) @map("member_id")
+  primaryStoreId Int?     @map("primary_store_id")
+  statusId       Int      @map("status_id")
+  name           String   @db.VarChar(100)
+  nameKana       String?  @map("name_kana") @db.VarChar(100)
+  email          String   @unique @db.VarChar(255)
+  phone          String   @db.VarChar(20)
+  passwordHash   String?  @map("password_hash") @db.VarChar(255)
+  gender         Gender
+  birthDate      DateTime @map("birth_date") @db.Date
+  lineUserId     String?  @unique @map("line_user_id") @db.VarChar(100)
+  visitCount     Int      @default(0) @map("visit_count")
+  totalSpent     Int      @default(0) @map("total_spent")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  status        CustomerStatus @relation(fields: [statusId], references: [id])
+  primaryStore  Store?         @relation("MemberPrimaryStore", fields: [primaryStoreId], references: [id])
+  reservations  Reservation[]
+  customerNotes CustomerNote[]
+  emailLineLogs EmailLineLog[]
+
+  @@index([statusId, visitCount])
+  @@index([birthDate])
+  @@map("members")
+}
+
+enum GenderRestriction {
+  none
+  female
+  male
+
+  @@map("gender_restriction")
+}
+
+model CourseCategory {
+  id                Int               @id @default(autoincrement()) @map("category_id")
+  name              String            @unique @db.VarChar(100)
+  description       String?
+  genderRestriction GenderRestriction @default(none) @map("gender_restriction")
+  sortOrder         Int               @map("sort_order")
+  isPublished       Boolean           @default(true) @map("is_published")
+
+  courses         Course[]
+  campaignTargets CampaignCategoryTarget[]
+
+  @@map("course_categories")
+}
+
+model Course {
+  id                  Int               @id @default(autoincrement()) @map("course_id")
+  categoryId          Int               @map("category_id")
+  name                String            @db.VarChar(100)
+  durationEstimateMin Int               @map("duration_estimate_min")
+  treatmentTimeMin    Int               @map("treatment_time_min")
+  price               Int
+  genderRestriction   GenderRestriction @default(none) @map("gender_restriction")
+  sortOrder           Int               @map("sort_order")
+  isPublished         Boolean           @default(true) @map("is_published")
+
+  category         CourseCategory         @relation(fields: [categoryId], references: [id])
+  campaignTargets  CampaignCourseTarget[]
+  reservationItems ReservationItem[]
+
+  @@map("courses")
+}
+
+model Option {
+  id                     Int               @id @default(autoincrement()) @map("option_id")
+  name                   String            @db.VarChar(100)
+  durationMin            Int               @map("duration_min")
+  price                  Int
+  genderRestriction      GenderRestriction @default(none) @map("gender_restriction")
+  requiresAdvanceBooking Boolean           @default(true) @map("requires_advance_booking")
+  discountExempt         Boolean           @default(true) @map("discount_exempt")
+
+  reservationItems ReservationItem[]
+
+  @@map("options")
+}
+
+enum DiscountType {
+  percentage
+  fixed_amount
+
+  @@map("discount_type")
+}
+
+model Campaign {
+  id            Int          @id @default(autoincrement()) @map("campaign_id")
+  targetStoreId Int?         @map("target_store_id")
+  name          String       @db.VarChar(100)
+  discountType  DiscountType @map("discount_type")
+  discountValue Int          @map("discount_value")
+  startDate     DateTime     @map("start_date") @db.Date
+  endDate       DateTime     @map("end_date") @db.Date
+  priority      Int          @default(0)
+  isPublished   Boolean      @default(true) @map("is_published")
+
+  targetStore      Store?                   @relation(fields: [targetStoreId], references: [id])
+  courseTargets    CampaignCourseTarget[]
+  categoryTargets  CampaignCategoryTarget[]
+  reservationItems ReservationItem[]
+
+  @@map("campaigns")
+}
+
+model CampaignCourseTarget {
+  id         Int @id @default(autoincrement())
+  campaignId Int @map("campaign_id")
+  courseId   Int @map("course_id")
+
+  campaign Campaign @relation(fields: [campaignId], references: [id])
+  course   Course   @relation(fields: [courseId], references: [id])
+
+  @@map("campaign_course_targets")
+}
+
+model CampaignCategoryTarget {
+  id         Int @id @default(autoincrement())
+  campaignId Int @map("campaign_id")
+  categoryId Int @map("category_id")
+
+  campaign Campaign       @relation(fields: [campaignId], references: [id])
+  category CourseCategory @relation(fields: [categoryId], references: [id])
+
+  @@map("campaign_category_targets")
+}
+
+enum ReservationStatus {
+  temp_hold
+  confirmed
+  completed
+  cancelled
+  no_show
+
+  @@map("reservation_status")
+}
+
+enum ReservationSource {
+  web
+  phone
+
+  @@map("reservation_source")
+}
+
+enum ReservationItemType {
+  course
+  option
+
+  @@map("reservation_item_type")
+}
+
+model Reservation {
+  id                   Int               @id @default(autoincrement()) @map("reservation_id")
+  memberId             Int               @map("member_id")
+  storeId              Int               @map("store_id")
+  staffId              Int?              @map("staff_id")
+  reservationDate      DateTime          @map("reservation_date") @db.Date
+  startTime            DateTime          @map("start_time") @db.Time()
+  endTime              DateTime          @map("end_time") @db.Time()
+  status               ReservationStatus
+  source               ReservationSource
+  nominationFeeApplied Int               @default(0) @map("nomination_fee_applied")
+  totalPrice           Int               @map("total_price")
+  tempHoldExpiresAt    DateTime?         @map("temp_hold_expires_at")
+  cancellationDeadline DateTime          @map("cancellation_deadline")
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @updatedAt @map("updated_at")
+
+  member Member            @relation(fields: [memberId], references: [id])
+  store  Store             @relation(fields: [storeId], references: [id])
+  staff  Staff?            @relation(fields: [staffId], references: [id])
+  items  ReservationItem[]
+
+  @@index([storeId, reservationDate, staffId])
+  @@index([status, tempHoldExpiresAt])
+  @@index([memberId, status])
+  @@map("reservations")
+}
+
+model ReservationItem {
+  id                Int                 @id @default(autoincrement()) @map("item_id")
+  reservationId     Int                 @map("reservation_id")
+  itemType          ReservationItemType @map("item_type")
+  courseId          Int?                @map("course_id")
+  optionId          Int?                @map("option_id")
+  appliedCampaignId Int?                @map("applied_campaign_id")
+  priceAtBooking    Int                 @map("price_at_booking")
+
+  reservation Reservation @relation(fields: [reservationId], references: [id])
+  course      Course?     @relation(fields: [courseId], references: [id])
+  option      Option?     @relation(fields: [optionId], references: [id])
+  campaign    Campaign?   @relation(fields: [appliedCampaignId], references: [id])
+
+  @@map("reservation_items")
+}
+
+enum ChannelMode {
+  email
+  line
+  auto
+
+  @@map("channel_mode")
+}
+
+enum AutoDeliveryType {
+  birthday
+  reminder
+
+  @@map("auto_delivery_type")
+}
+
+enum DeliveryChannel {
+  email
+  line
+
+  @@map("delivery_channel")
+}
+
+enum DeliveryTemplateType {
+  birthday
+  reminder
+  segment
+
+  @@map("delivery_template_type")
+}
+
+enum JobStatus {
+  success
+  failed
+
+  @@map("job_status")
+}
+
+model CustomerNote {
+  id        Int      @id @default(autoincrement()) @map("note_id")
+  memberId  Int      @map("member_id")
+  staffId   Int      @map("staff_id")
+  noteText  String   @map("note_text")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  member Member @relation(fields: [memberId], references: [id])
+  staff  Staff  @relation(fields: [staffId], references: [id])
+
+  @@map("customer_notes")
+}
+
+model SegmentCampaign {
+  id               Int         @id @default(autoincrement()) @map("segment_campaign_id")
+  name             String      @db.VarChar(100)
+  conditionJson    Json        @map("condition_json")
+  channelMode      ChannelMode @map("channel_mode")
+  templateId       Int         @map("template_id")
+  scheduledAt      DateTime?   @map("scheduled_at")
+  sentAt           DateTime?   @map("sent_at")
+  targetCount      Int         @map("target_count")
+  createdByAdminId Int         @map("created_by_admin_id")
+  createdAt        DateTime    @default(now()) @map("created_at")
+
+  createdByAdmin Admin          @relation(fields: [createdByAdminId], references: [id])
+  emailLineLogs  EmailLineLog[]
+
+  @@map("segment_campaigns")
+}
+
+model AutoDeliverySetting {
+  id          Int              @id @default(autoincrement()) @map("setting_id")
+  type        AutoDeliveryType
+  channelMode ChannelMode      @map("channel_mode")
+  sendTiming  String           @map("send_timing") @db.VarChar(50)
+  templateId  Int              @map("template_id")
+  isActive    Boolean          @default(true) @map("is_active")
+
+  @@map("auto_delivery_settings")
+}
+
+model EmailLineLog {
+  id                Int                  @id @default(autoincrement()) @map("log_id")
+  memberId          Int                  @map("member_id")
+  channel           DeliveryChannel
+  templateType      DeliveryTemplateType @map("template_type")
+  segmentCampaignId Int?                 @map("segment_campaign_id")
+  subject           String?              @db.VarChar(255)
+  sentAt            DateTime             @map("sent_at")
+  status            JobStatus
+
+  member          Member           @relation(fields: [memberId], references: [id])
+  segmentCampaign SegmentCampaign? @relation(fields: [segmentCampaignId], references: [id])
+
+  @@index([memberId, sentAt])
+  @@map("email_line_logs")
+}
+
+model CronJobLog {
+  id           Int       @id @default(autoincrement()) @map("log_id")
+  jobName      String    @map("job_name") @db.VarChar(100)
+  executedAt   DateTime  @map("executed_at")
+  status       JobStatus
+  targetCount  Int       @default(0) @map("target_count")
+  errorMessage String?
+
+  @@map("cron_job_logs")
+}
