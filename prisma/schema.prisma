@@ -276,7 +276,7 @@ enum ReservationItemType {
 
 model Reservation {
   id                   Int               @id @default(autoincrement()) @map("reservation_id")
-  memberId             Int               @map("member_id")
+  memberId             Int?              @map("member_id")
   storeId              Int               @map("store_id")
   staffId              Int?              @map("staff_id")
   reservationDate      DateTime          @map("reservation_date") @db.Date
@@ -291,7 +291,7 @@ model Reservation {
   createdAt            DateTime          @default(now()) @map("created_at")
   updatedAt            DateTime          @updatedAt @map("updated_at")
 
-  member Member            @relation(fields: [memberId], references: [id])
+  member Member?           @relation(fields: [memberId], references: [id])
   store  Store             @relation(fields: [storeId], references: [id])
   staff  Staff?            @relation(fields: [staffId], references: [id])
   items  ReservationItem[]
