@@ -8,12 +8,17 @@ import { CourseSelectStep } from "@/components/reservation/course-select-step";
 import { OptionSelectStep } from "@/components/reservation/option-select-step";
 import { StaffSelectStep } from "@/components/reservation/staff-select-step";
 import { DateTimeSelectStep } from "@/components/reservation/date-time-select-step";
+import { AuthStep } from "@/components/reservation/auth-step";
+import { ConfirmationStep } from "@/components/reservation/confirmation-step";
+import { CompletionStep } from "@/components/reservation/completion-step";
 import { listStores, type StoreListItem } from "@/app/actions/stores";
 import { listCourseCategories, type CourseCategoryListItem } from "@/app/actions/course-categories";
 import { listCoursesForCategory, type CourseListItem } from "@/app/actions/courses";
 import { listOptions, type OptionListItem } from "@/app/actions/options";
 import { listStaffForStore, type StaffListItem } from "@/app/actions/staff";
 import { createTempHoldReservation } from "@/app/actions/create-temp-hold";
+import { confirmReservation } from "@/app/actions/confirm-reservation";
+import { minutesToLabel } from "@/lib/reservation/time";
 import type { MemberGender } from "@/lib/reservation/gender-restriction";
 
 const TOTAL_STEPS = 9;
@@ -25,6 +30,8 @@ interface WizardState {
   courseId: number | null;
   optionIds: number[];
   staffId: number | null;
+  reservationDate: string | null;
+  startTimeLabel: string | null;
   reservationId: number | null;
   errorMessage: string | null;
 }
@@ -37,9 +44,12 @@ export function ReservationWizard({ memberGender }: { memberGender: MemberGender
     courseId: null,
     optionIds: [],
     staffId: null,
+    reservationDate: null,
+    startTimeLabel: null,
     reservationId: null,
     errorMessage: null,
   });
+  const [confirming, setConfirming] = useState(false);
   const [stores, setStores] = useState<StoreListItem[]>([]);
   const [categories, setCategories] = useState<CourseCategoryListItem[]>([]);
   const [courses, setCourses] = useState<CourseListItem[]>([]);
@@ -95,10 +105,37 @@ export function ReservationWizard({ memberGender }: { memberGender: MemberGender
     setState((s) => ({
       ...s,
       reservationId: result.reservationId,
+      reservationDate: date,
+      startTimeLabel: minutesToLabel(startMinutes),
       step: 7,
       errorMessage: null,
     }));
   }
+
+  async function handleConfirm() {
+    if (state.reservationId === null) return;
+    setConfirming(true);
+    const result = await confirmReservation({ reservationId: state.reservationId });
+    setConfirming(false);
+
+    if (result.status !== "confirmed") {
+      setState((s) => ({
+        ...s,
+        errorMessage:
+          result.status === "expired"
+            ? "仮予約の有効期限が切れました。お手数ですが最初からやり直してください。"
+            : "予約の確定に失敗しました。もう一度お試しください。",
+      }));
+      return;
+    }
+
+    setState((s) => ({ ...s, step: 9, errorMessage: null }));
+  }
+
+  const selectedStore = stores.find((s) => s.id === state.storeId);
+  const selectedCourse = courses.find((c) => c.id === state.courseId);
+  const selectedOptions = options.filter((o) => state.optionIds.includes(o.id));
+  const selectedStaff = staff.find((s) => s.id === state.staffId);
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-6 p-4">
@@ -165,12 +202,26 @@ export function ReservationWizard({ memberGender }: { memberGender: MemberGender
         </div>
       )}
 
-      {state.step >= 7 && (
-        <p className="text-center text-sm text-neutral-500">
-          仮予約番号: {state.reservationId ?? "—"}
-          <br />
-          会員登録/ログイン・確認・完了はPhase 5で実装予定です。
-        </p>
+      {state.step === 7 && (
+        <AuthStep onAuthenticated={() => setState((s) => ({ ...s, step: 8 }))} />
+      )}
+
+      {state.step === 8 && state.reservationDate !== null && state.startTimeLabel !== null && (
+        <ConfirmationStep
+          store={selectedStore}
+          course={selectedCourse}
+          options={selectedOptions}
+          staff={selectedStaff}
+          reservationDate={state.reservationDate}
+          startTimeLabel={state.startTimeLabel}
+          onConfirm={handleConfirm}
+          submitting={confirming}
+          errorMessage={state.errorMessage}
+        />
+      )}
+
+      {state.step === 9 && state.reservationId !== null && (
+        <CompletionStep reservationId={state.reservationId} />
       )}
     </div>
   );
