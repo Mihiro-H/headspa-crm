@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { listStores, type StoreListItem } from "@/app/actions/stores";
 import {
   getCalendarReservations,
@@ -83,8 +84,9 @@ export default function AdminCalendarPage() {
             <h2 className="mb-2 text-sm font-medium text-neutral-600">{staffName}</h2>
             <div className="flex flex-col gap-2">
               {items.map((r) => (
-                <div
+                <Link
                   key={r.id}
+                  href={`/admin/reservations/${r.id}`}
                   className="flex items-center justify-between rounded-lg border border-neutral-200 bg-neutral-0 p-3 shadow-sm"
                 >
                   <div>
@@ -100,7 +102,7 @@ export default function AdminCalendarPage() {
                   <span className="rounded-full bg-primary-50 px-2 py-1 text-xs text-primary-700">
                     {statusLabel(r.status)}
                   </span>
-                </div>
+                </Link>
               ))}
             </div>
           </div>

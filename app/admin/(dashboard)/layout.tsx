@@ -30,6 +30,36 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
           >
             ステータス設定
           </Link>
+          <Link
+            href="/admin/reservations/new"
+            className="rounded-md px-3 py-2 text-sm text-neutral-700 hover:bg-primary-50"
+          >
+            電話予約登録
+          </Link>
+          <Link
+            href="/admin/menu"
+            className="rounded-md px-3 py-2 text-sm text-neutral-700 hover:bg-primary-50"
+          >
+            メニュー・料金管理
+          </Link>
+          <Link
+            href="/admin/campaigns"
+            className="rounded-md px-3 py-2 text-sm text-neutral-700 hover:bg-primary-50"
+          >
+            キャンペーン管理
+          </Link>
+          <Link
+            href="/admin/staff"
+            className="rounded-md px-3 py-2 text-sm text-neutral-700 hover:bg-primary-50"
+          >
+            スタッフ管理
+          </Link>
+          <Link
+            href="/admin/stores"
+            className="rounded-md px-3 py-2 text-sm text-neutral-700 hover:bg-primary-50"
+          >
+            店舗管理
+          </Link>
         </nav>
       </aside>
       <main className="flex-1 bg-neutral-50 p-6">{children}</main>
