@@ -1,0 +1,26 @@
+import Link from "next/link";
+
+export default function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-screen">
+      <aside className="w-60 shrink-0 border-r border-neutral-200 bg-neutral-0 p-4">
+        <h1 className="font-heading text-lg text-primary-700">フォレスパ</h1>
+        <nav className="mt-6 flex flex-col gap-1">
+          <Link
+            href="/admin/dashboard"
+            className="rounded-md px-3 py-2 text-sm text-neutral-700 hover:bg-primary-50"
+          >
+            ダッシュボード
+          </Link>
+          <Link
+            href="/admin/calendar"
+            className="rounded-md px-3 py-2 text-sm text-neutral-700 hover:bg-primary-50"
+          >
+            予約カレンダー
+          </Link>
+        </nav>
+      </aside>
+      <main className="flex-1 bg-neutral-50 p-6">{children}</main>
+    </div>
+  );
+}
