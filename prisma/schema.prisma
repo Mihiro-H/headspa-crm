@@ -37,6 +37,7 @@ model Store {
   primaryMembers Member[]       @relation("MemberPrimaryStore")
   campaigns      Campaign[]
   reservations   Reservation[]
+  notifications  Notification[]
 
   @@map("stores")
 }
@@ -297,6 +298,7 @@ model Reservation {
   store  Store             @relation(fields: [storeId], references: [id])
   staff  Staff?            @relation(fields: [staffId], references: [id])
   items  ReservationItem[]
+  notifications Notification[]
 
   @@index([storeId, reservationDate, staffId])
   @@index([status, tempHoldExpiresAt])
@@ -383,7 +385,8 @@ model SegmentCampaign {
   createdByAdminId Int         @map("created_by_admin_id")
   createdAt        DateTime    @default(now()) @map("created_at")
 
-  createdByAdmin Admin          @relation(fields: [createdByAdminId], references: [id])
+  createdByAdmin Admin            @relation(fields: [createdByAdminId], references: [id])
+  template       DeliveryTemplate @relation(fields: [templateId], references: [id])
   emailLineLogs  EmailLineLog[]
 
   @@map("segment_campaigns")
@@ -396,6 +399,8 @@ model AutoDeliverySetting {
   sendTiming  String           @map("send_timing") @db.VarChar(50)
   templateId  Int              @map("template_id")
   isActive    Boolean          @default(true) @map("is_active")
+
+  template DeliveryTemplate @relation(fields: [templateId], references: [id])
 
   @@map("auto_delivery_settings")
 }
@@ -417,6 +422,21 @@ model EmailLineLog {
   @@map("email_line_logs")
 }
 
+model DeliveryTemplate {
+  id        Int                  @id @default(autoincrement()) @map("template_id")
+  type      DeliveryTemplateType
+  name      String               @db.VarChar(100)
+  subject   String?              @db.VarChar(255)
+  bodyText  String               @map("body_text")
+  createdAt DateTime             @default(now()) @map("created_at")
+  updatedAt DateTime             @updatedAt @map("updated_at")
+
+  segmentCampaigns     SegmentCampaign[]
+  autoDeliverySettings AutoDeliverySetting[]
+
+  @@map("delivery_templates")
+}
+
 model CronJobLog {
   id           Int       @id @default(autoincrement()) @map("log_id")
   jobName      String    @map("job_name") @db.VarChar(100)
@@ -426,4 +446,27 @@ model CronJobLog {
   errorMessage String?
 
   @@map("cron_job_logs")
+}
+
+enum NotificationType {
+  new_reservation
+  cancellation
+
+  @@map("notification_type")
+}
+
+model Notification {
+  id            Int              @id @default(autoincrement()) @map("notification_id")
+  storeId       Int              @map("store_id")
+  type          NotificationType
+  message       String           @db.VarChar(255)
+  reservationId Int              @map("reservation_id")
+  isRead        Boolean          @default(false) @map("is_read")
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  store       Store       @relation(fields: [storeId], references: [id])
+  reservation Reservation @relation(fields: [reservationId], references: [id])
+
+  @@index([storeId, isRead])
+  @@map("notifications")
 }

@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { minutesToLabel, dbTimeToMinutes } from "@/lib/reservation/time";
+import { createNotification } from "@/lib/notifications/create-notification";
 
 export interface ReservationDetail {
   id: number;
@@ -57,9 +58,16 @@ export async function getReservationDetail(
 }
 
 export async function cancelReservation(reservationId: number): Promise<void> {
-  await prisma.reservation.update({
+  const updated = await prisma.reservation.update({
     where: { id: reservationId },
     data: { status: "cancelled" },
+  });
+
+  await createNotification({
+    storeId: updated.storeId,
+    type: "cancellation",
+    message: `予約キャンセル：${updated.reservationDate.toISOString().slice(0, 10)} ${minutesToLabel(dbTimeToMinutes(updated.startTime))}〜`,
+    reservationId: updated.id,
   });
 }
 

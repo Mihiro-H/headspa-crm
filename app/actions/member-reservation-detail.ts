@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { minutesToLabel, dbTimeToMinutes } from "@/lib/reservation/time";
+import { createNotification } from "@/lib/notifications/create-notification";
 
 export interface MemberReservationDetail {
   id: number;
@@ -87,9 +88,16 @@ export async function cancelMemberReservation(
     return { status: "deadline_passed" };
   }
 
-  await prisma.reservation.update({
+  const updated = await prisma.reservation.update({
     where: { id: params.reservationId },
     data: { status: "cancelled" },
+  });
+
+  await createNotification({
+    storeId: updated.storeId,
+    type: "cancellation",
+    message: `予約キャンセル：${updated.reservationDate.toISOString().slice(0, 10)} ${minutesToLabel(dbTimeToMinutes(updated.startTime))}〜`,
+    reservationId: updated.id,
   });
 
   return { status: "cancelled" };

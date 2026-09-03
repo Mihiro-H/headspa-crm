@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { NotificationBell } from "@/components/admin/notification-bell";
 
 export default function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -60,9 +61,44 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
           >
             店舗管理
           </Link>
+          <Link
+            href="/admin/reports"
+            className="rounded-md px-3 py-2 text-sm text-neutral-700 hover:bg-primary-50"
+          >
+            売上・月報レポート
+          </Link>
+          <Link
+            href="/admin/segment-campaigns"
+            className="rounded-md px-3 py-2 text-sm text-neutral-700 hover:bg-primary-50"
+          >
+            メール／LINE配信管理
+          </Link>
+          <Link
+            href="/admin/auto-delivery"
+            className="rounded-md px-3 py-2 text-sm text-neutral-700 hover:bg-primary-50"
+          >
+            自動配信設定
+          </Link>
+          <Link
+            href="/admin/templates"
+            className="rounded-md px-3 py-2 text-sm text-neutral-700 hover:bg-primary-50"
+          >
+            配信テンプレート管理
+          </Link>
+          <Link
+            href="/admin/cron-logs"
+            className="rounded-md px-3 py-2 text-sm text-neutral-700 hover:bg-primary-50"
+          >
+            Cronジョブ実行ログ
+          </Link>
         </nav>
       </aside>
-      <main className="flex-1 bg-neutral-50 p-6">{children}</main>
+      <div className="flex flex-1 flex-col">
+        <header className="flex items-center justify-end border-b border-neutral-200 bg-neutral-0 px-6 py-3">
+          <NotificationBell />
+        </header>
+        <main className="flex-1 bg-neutral-50 p-6">{children}</main>
+      </div>
     </div>
   );
 }

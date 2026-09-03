@@ -1,11 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getReservationDetail, cancelReservation, markNoShow } from "./reservation-detail";
 import { prisma } from "@/lib/db";
+import { createNotification } from "@/lib/notifications/create-notification";
 
 vi.mock("@/lib/db", () => ({
   prisma: {
     reservation: { findUnique: vi.fn(), update: vi.fn() },
   },
+}));
+
+vi.mock("@/lib/notifications/create-notification", () => ({
+  createNotification: vi.fn(),
 }));
 
 describe("getReservationDetail", () => {
@@ -63,13 +68,36 @@ describe("cancelReservation", () => {
   });
 
   it("sets the reservation status to cancelled", async () => {
-    vi.mocked(prisma.reservation.update).mockResolvedValue({} as never);
+    vi.mocked(prisma.reservation.update).mockResolvedValue({
+      id: 1,
+      storeId: 2,
+      reservationDate: new Date("2026-09-20T00:00:00.000Z"),
+      startTime: new Date("1970-01-01T11:00:00.000Z"),
+    } as never);
 
     await cancelReservation(1);
 
     expect(prisma.reservation.update).toHaveBeenCalledWith({
       where: { id: 1 },
       data: { status: "cancelled" },
+    });
+  });
+
+  it("creates a store notification for the cancellation", async () => {
+    vi.mocked(prisma.reservation.update).mockResolvedValue({
+      id: 1,
+      storeId: 2,
+      reservationDate: new Date("2026-09-20T00:00:00.000Z"),
+      startTime: new Date("1970-01-01T11:00:00.000Z"),
+    } as never);
+
+    await cancelReservation(1);
+
+    expect(createNotification).toHaveBeenCalledWith({
+      storeId: 2,
+      type: "cancellation",
+      message: "予約キャンセル：2026-09-20 11:00〜",
+      reservationId: 1,
     });
   });
 });

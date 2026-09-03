@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getMemberNextReservation, cancelMemberReservation } from "./member-reservation-detail";
 import { prisma } from "@/lib/db";
 import { auth } from "@/auth";
+import { createNotification } from "@/lib/notifications/create-notification";
 
 vi.mock("@/lib/db", () => ({
   prisma: {
@@ -11,6 +12,10 @@ vi.mock("@/lib/db", () => ({
 
 vi.mock("@/auth", () => ({
   auth: vi.fn(),
+}));
+
+vi.mock("@/lib/notifications/create-notification", () => ({
+  createNotification: vi.fn(),
 }));
 
 describe("getMemberNextReservation", () => {
@@ -160,7 +165,12 @@ describe("cancelMemberReservation", () => {
       status: "confirmed",
       cancellationDeadline: new Date("2099-01-01T00:00:00.000Z"),
     } as never);
-    vi.mocked(prisma.reservation.update).mockResolvedValue({} as never);
+    vi.mocked(prisma.reservation.update).mockResolvedValue({
+      id: 55,
+      storeId: 2,
+      reservationDate: new Date("2026-09-10T00:00:00.000Z"),
+      startTime: new Date("1970-01-01T10:30:00.000Z"),
+    } as never);
 
     const result = await cancelMemberReservation({ reservationId: 55 });
 
@@ -168,6 +178,31 @@ describe("cancelMemberReservation", () => {
     expect(prisma.reservation.update).toHaveBeenCalledWith({
       where: { id: 55 },
       data: { status: "cancelled" },
+    });
+  });
+
+  it("creates a store notification when the member cancels their reservation", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "7", role: "member" } } as never);
+    vi.mocked(prisma.reservation.findUnique).mockResolvedValue({
+      id: 55,
+      memberId: 7,
+      status: "confirmed",
+      cancellationDeadline: new Date("2099-01-01T00:00:00.000Z"),
+    } as never);
+    vi.mocked(prisma.reservation.update).mockResolvedValue({
+      id: 55,
+      storeId: 2,
+      reservationDate: new Date("2026-09-10T00:00:00.000Z"),
+      startTime: new Date("1970-01-01T10:30:00.000Z"),
+    } as never);
+
+    await cancelMemberReservation({ reservationId: 55 });
+
+    expect(createNotification).toHaveBeenCalledWith({
+      storeId: 2,
+      type: "cancellation",
+      message: "予約キャンセル：2026-09-10 10:30〜",
+      reservationId: 55,
     });
   });
 });

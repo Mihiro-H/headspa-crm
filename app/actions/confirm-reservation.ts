@@ -3,6 +3,8 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { isTempHoldExpired } from "@/lib/reservation/temp-hold";
+import { createNotification } from "@/lib/notifications/create-notification";
+import { minutesToLabel, dbTimeToMinutes } from "@/lib/reservation/time";
 
 export interface ConfirmReservationParams {
   reservationId: number;
@@ -38,9 +40,16 @@ export async function confirmReservation(
     return { status: "expired" };
   }
 
-  await prisma.reservation.update({
+  const updated = await prisma.reservation.update({
     where: { id: params.reservationId },
     data: { memberId, status: "confirmed", tempHoldExpiresAt: null },
+  });
+
+  await createNotification({
+    storeId: updated.storeId,
+    type: "new_reservation",
+    message: `新規WEB予約：${updated.reservationDate.toISOString().slice(0, 10)} ${minutesToLabel(dbTimeToMinutes(updated.startTime))}〜`,
+    reservationId: updated.id,
   });
 
   return { status: "confirmed" };

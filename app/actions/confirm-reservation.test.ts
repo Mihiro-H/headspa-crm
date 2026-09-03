@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { confirmReservation } from "./confirm-reservation";
 import { prisma } from "@/lib/db";
 import { auth } from "@/auth";
+import { createNotification } from "@/lib/notifications/create-notification";
 
 vi.mock("@/lib/db", () => ({
   prisma: {
@@ -16,10 +17,19 @@ vi.mock("@/auth", () => ({
   auth: vi.fn(),
 }));
 
+vi.mock("@/lib/notifications/create-notification", () => ({
+  createNotification: vi.fn(),
+}));
+
 describe("confirmReservation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(prisma.reservation.update).mockResolvedValue({ id: 99 } as never);
+    vi.mocked(prisma.reservation.update).mockResolvedValue({
+      id: 99,
+      storeId: 2,
+      reservationDate: new Date("2026-09-20T00:00:00.000Z"),
+      startTime: new Date("1970-01-01T11:00:00.000Z"),
+    } as never);
   });
 
   it("confirms using the authenticated member's id from the session, not a client-supplied one", async () => {
@@ -36,6 +46,24 @@ describe("confirmReservation", () => {
     expect(prisma.reservation.update).toHaveBeenCalledWith({
       where: { id: 99 },
       data: { memberId: 5, status: "confirmed", tempHoldExpiresAt: null },
+    });
+  });
+
+  it("creates a store notification for the newly confirmed reservation", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "5", role: "member" } } as never);
+    vi.mocked(prisma.reservation.findUnique).mockResolvedValue({
+      id: 99,
+      status: "temp_hold",
+      tempHoldExpiresAt: new Date(Date.now() + 60_000),
+    } as never);
+
+    await confirmReservation({ reservationId: 99 });
+
+    expect(createNotification).toHaveBeenCalledWith({
+      storeId: 2,
+      type: "new_reservation",
+      message: "新規WEB予約：2026-09-20 11:00〜",
+      reservationId: 99,
     });
   });
 
