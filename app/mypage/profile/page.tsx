@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import {
   getMemberProfile,
   updateMemberProfile,
@@ -9,6 +10,7 @@ import {
 } from "@/app/actions/update-member-profile";
 
 const inputClass = "h-12 rounded-md border border-neutral-300 px-3";
+const passwordInputClass = "h-12 w-full rounded-md border border-neutral-300 px-3 pr-10";
 
 export default function MemberProfilePage() {
   const [profile, setProfile] = useState<MemberProfile | null>(null);
@@ -17,6 +19,7 @@ export default function MemberProfilePage() {
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
 
@@ -31,7 +34,7 @@ export default function MemberProfilePage() {
     const result = await updateMemberProfile({
       name: profile.name,
       phone: profile.phone,
-      birthDate: profile.birthDate,
+      birthMonth: profile.birthMonth,
       gender: profile.gender,
       emailNotificationEnabled: profile.emailNotificationEnabled,
       lineNotificationEnabled: profile.lineNotificationEnabled,
@@ -85,12 +88,17 @@ export default function MemberProfilePage() {
           className={inputClass}
           placeholder="電話番号"
         />
-        <input
-          type="date"
-          value={profile.birthDate}
-          onChange={(e) => setProfile({ ...profile, birthDate: e.target.value })}
+        <select
+          value={profile.birthMonth}
+          onChange={(e) => setProfile({ ...profile, birthMonth: Number(e.target.value) })}
           className={inputClass}
-        />
+        >
+          {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+            <option key={month} value={month}>
+              {month}月生まれ
+            </option>
+          ))}
+        </select>
         <select
           value={profile.gender}
           onChange={(e) =>
@@ -143,21 +151,49 @@ export default function MemberProfilePage() {
         )}
         {passwordMessage && <p className="text-sm text-neutral-600">{passwordMessage}</p>}
         {profile.hasPassword && (
-          <input
-            type="password"
-            placeholder="現在のパスワード"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            className={inputClass}
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="現在のパスワード"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className={passwordInputClass}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "パスワードを非表示にする" : "パスワードを表示する"}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+            >
+              {showPassword ? (
+                <EyeOff className="h-5 w-5" aria-hidden="true" />
+              ) : (
+                <Eye className="h-5 w-5" aria-hidden="true" />
+              )}
+            </button>
+          </div>
         )}
-        <input
-          type="password"
-          placeholder="新しいパスワード"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          className={inputClass}
-        />
+        <div className="relative">
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="新しいパスワード"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            className={passwordInputClass}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-label={showPassword ? "パスワードを非表示にする" : "パスワードを表示する"}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+          >
+            {showPassword ? (
+              <EyeOff className="h-5 w-5" aria-hidden="true" />
+            ) : (
+              <Eye className="h-5 w-5" aria-hidden="true" />
+            )}
+          </button>
+        </div>
         <button
           type="button"
           disabled={savingPassword}

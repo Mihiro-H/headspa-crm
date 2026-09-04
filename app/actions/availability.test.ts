@@ -65,4 +65,20 @@ describe("getAvailableSlots", () => {
 
     expect(result).toEqual([]);
   });
+
+  it("returns no slots for a date beyond the 3-month booking window", async () => {
+    const result = await getAvailableSlots(
+      {
+        storeId: 1,
+        staffId: null,
+        date: "2026-09-02",
+        courseId: 10,
+        optionIds: [],
+      },
+      new Date("2026-01-01T00:00:00.000Z"),
+    );
+
+    expect(result).toEqual([]);
+    expect(prisma.store.findUniqueOrThrow).not.toHaveBeenCalled();
+  });
 });

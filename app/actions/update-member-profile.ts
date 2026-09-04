@@ -7,7 +7,7 @@ import { hashPassword, verifyPassword } from "@/lib/auth/password";
 export interface MemberProfile {
   name: string;
   phone: string;
-  birthDate: string;
+  birthMonth: number;
   gender: "female" | "male" | "other";
   hasPassword: boolean;
   lineLinked: boolean;
@@ -28,7 +28,7 @@ export async function getMemberProfile(): Promise<MemberProfile | null> {
   return {
     name: member.name,
     phone: member.phone,
-    birthDate: member.birthDate.toISOString().slice(0, 10),
+    birthMonth: member.birthMonth,
     gender: member.gender,
     hasPassword: member.passwordHash !== null,
     lineLinked: member.lineUserId !== null,
@@ -40,7 +40,7 @@ export async function getMemberProfile(): Promise<MemberProfile | null> {
 export interface UpdateMemberProfileParams {
   name: string;
   phone: string;
-  birthDate: string;
+  birthMonth: number;
   gender: "female" | "male" | "other";
   emailNotificationEnabled: boolean;
   lineNotificationEnabled: boolean;
@@ -62,7 +62,7 @@ export async function updateMemberProfile(
     data: {
       name: params.name,
       phone: params.phone,
-      birthDate: new Date(`${params.birthDate}T00:00:00.000Z`),
+      birthMonth: params.birthMonth,
       gender: params.gender,
       emailNotificationEnabled: params.emailNotificationEnabled,
       lineNotificationEnabled: params.lineNotificationEnabled,

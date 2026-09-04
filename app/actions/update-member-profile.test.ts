@@ -37,7 +37,7 @@ describe("getMemberProfile", () => {
       id: 7,
       name: "田中 花子",
       phone: "090-1111-2222",
-      birthDate: new Date("1995-05-01T00:00:00.000Z"),
+      birthMonth: 5,
       gender: "female",
       passwordHash: "some-hash",
       lineUserId: null,
@@ -50,7 +50,7 @@ describe("getMemberProfile", () => {
     expect(result).toEqual({
       name: "田中 花子",
       phone: "090-1111-2222",
-      birthDate: "1995-05-01",
+      birthMonth: 5,
       gender: "female",
       hasPassword: true,
       lineLinked: false,
@@ -65,7 +65,7 @@ describe("getMemberProfile", () => {
       id: 7,
       name: "田中 花子",
       phone: "090-1111-2222",
-      birthDate: new Date("1995-05-01T00:00:00.000Z"),
+      birthMonth: 5,
       gender: "female",
       passwordHash: null,
       lineUserId: "line-user-1",
@@ -91,7 +91,7 @@ describe("updateMemberProfile", () => {
     const result = await updateMemberProfile({
       name: "田中 花子",
       phone: "090-1111-2222",
-      birthDate: "1995-05-01",
+      birthMonth: 5,
       gender: "female",
       emailNotificationEnabled: true,
       lineNotificationEnabled: true,
@@ -108,7 +108,7 @@ describe("updateMemberProfile", () => {
     const result = await updateMemberProfile({
       name: "田中 花子",
       phone: "090-9999-8888",
-      birthDate: "1995-05-01",
+      birthMonth: 5,
       gender: "female",
       emailNotificationEnabled: false,
       lineNotificationEnabled: true,
@@ -120,7 +120,7 @@ describe("updateMemberProfile", () => {
       data: {
         name: "田中 花子",
         phone: "090-9999-8888",
-        birthDate: new Date("1995-05-01T00:00:00.000Z"),
+        birthMonth: 5,
         gender: "female",
         emailNotificationEnabled: false,
         lineNotificationEnabled: true,

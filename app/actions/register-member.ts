@@ -8,7 +8,7 @@ export interface RegisterMemberParams {
   email: string;
   phone: string;
   password: string;
-  birthDate: string;
+  birthMonth: number;
   gender: "female" | "male" | "other";
 }
 
@@ -35,7 +35,7 @@ export async function registerMember(
       email: params.email,
       phone: params.phone,
       passwordHash,
-      birthDate: new Date(`${params.birthDate}T00:00:00.000Z`),
+      birthMonth: params.birthMonth,
       gender: params.gender,
       statusId: defaultStatus.id,
     },

@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { generateAvailableSlots } from "@/lib/reservation/time-slots";
 import { dbTimeToMinutes } from "@/lib/reservation/time";
+import { isWithinBookingWindow } from "@/lib/reservation/booking-window";
 
 export interface GetAvailableSlotsParams {
   storeId: number;
@@ -12,8 +13,15 @@ export interface GetAvailableSlotsParams {
   optionIds: number[];
 }
 
-export async function getAvailableSlots(params: GetAvailableSlotsParams): Promise<number[]> {
+export async function getAvailableSlots(
+  params: GetAvailableSlotsParams,
+  today: Date = new Date(),
+): Promise<number[]> {
   const targetDate = new Date(`${params.date}T00:00:00.000Z`);
+
+  if (!isWithinBookingWindow(targetDate, today)) {
+    return [];
+  }
 
   const [store, holidays, course, options, staffShift, existingReservations] = await Promise.all([
     prisma.store.findUniqueOrThrow({ where: { id: params.storeId } }),

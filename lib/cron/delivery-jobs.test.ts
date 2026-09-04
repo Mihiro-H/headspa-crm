@@ -93,20 +93,13 @@ describe("runBirthdayJob", () => {
         name: "山田太郎",
         email: "yamada@example.com",
         lineUserId: null,
-        birthDate: new Date("1990-09-15T00:00:00.000Z"),
-      },
-      {
-        id: 2,
-        name: "鈴木花子",
-        email: "suzuki@example.com",
-        lineUserId: null,
-        birthDate: new Date("1990-03-15T00:00:00.000Z"),
       },
     ] as never);
     vi.mocked(sendToMemberAndLog).mockResolvedValue("success");
 
     await runBirthdayJob(now);
 
+    expect(prisma.member.findMany).toHaveBeenCalledWith({ where: { birthMonth: 9 } });
     expect(sendToMemberAndLog).toHaveBeenCalledTimes(1);
     expect(sendToMemberAndLog).toHaveBeenCalledWith(
       expect.objectContaining({ member: expect.objectContaining({ id: 1 }) }),

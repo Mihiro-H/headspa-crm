@@ -24,7 +24,7 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 p-4">
+    <div className="mx-auto flex w-full min-h-screen max-w-sm flex-col justify-center gap-4 p-4">
       <h1 className="font-heading text-2xl text-primary-700">フォレスパ 管理画面</h1>
       {error && <p className="rounded-lg bg-error/10 p-3 text-sm text-error">{error}</p>}
       <input

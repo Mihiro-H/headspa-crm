@@ -24,7 +24,7 @@ describe("registerMember", () => {
       email: "hanako@example.com",
       phone: "090-0000-0000",
       password: "himitsu-password",
-      birthDate: "1995-05-01",
+      birthMonth: 5,
       gender: "female",
     });
 
@@ -46,7 +46,7 @@ describe("registerMember", () => {
       email: "hanako@example.com",
       phone: "090-0000-0000",
       password: "himitsu-password",
-      birthDate: "1995-05-01",
+      birthMonth: 5,
       gender: "female",
     });
 

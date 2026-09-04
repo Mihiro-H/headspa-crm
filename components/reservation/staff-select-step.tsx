@@ -16,16 +16,16 @@ export function StaffSelectStep({ staff, onSelect }: StaffSelectStepProps) {
       <button
         type="button"
         onClick={() => onSelect(null)}
-        className="rounded-lg border border-primary-300 bg-primary-50 p-4 text-left shadow-sm"
+        className="w-full rounded-lg border border-primary-300 bg-primary-50 p-4 text-left shadow-sm"
       >
-        <p className="font-medium text-neutral-800">指名なし（自動割当）</p>
+        <p className="font-medium text-neutral-800">指名なし</p>
       </button>
       {staff.map((member) => (
         <button
           key={member.id}
           type="button"
           onClick={() => onSelect(member.id)}
-          className="rounded-lg border border-neutral-200 bg-neutral-0 p-4 text-left shadow-sm transition-colors hover:border-primary-300"
+          className="w-full rounded-lg border border-neutral-200 bg-neutral-0 p-4 text-left shadow-sm transition-colors hover:border-primary-300"
         >
           <p className="font-medium text-neutral-800">{member.name}</p>
           {member.bio && <p className="mt-1 text-sm text-neutral-500">{member.bio}</p>}

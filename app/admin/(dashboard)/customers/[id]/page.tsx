@@ -83,8 +83,8 @@ export default function AdminCustomerDetailPage({
             {customer.phone}
           </p>
           <p className="text-sm text-neutral-800">
-            <span className="text-neutral-500">生年月日：</span>
-            {customer.birthDate}
+            <span className="text-neutral-500">誕生月：</span>
+            {customer.birthMonth}月
           </p>
           <p className="text-sm text-neutral-800">
             <span className="text-neutral-500">性別：</span>

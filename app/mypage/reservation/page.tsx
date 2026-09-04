@@ -7,6 +7,8 @@ import {
   cancelMemberReservation,
   type MemberReservationDetail,
 } from "@/app/actions/member-reservation-detail";
+import { formatJapaneseDate } from "@/lib/reservation/date-format";
+import { calculateCancellationDeadline } from "@/lib/reservation/cancellation-deadline";
 
 export default function MemberReservationPage() {
   const router = useRouter();
@@ -84,7 +86,8 @@ export default function MemberReservationPage() {
 
       <div className="flex flex-col gap-2 rounded-lg border border-neutral-200 p-4">
         <p className="font-medium text-neutral-800">
-          {reservation.reservationDate} {reservation.startTimeLabel}〜{reservation.endTimeLabel}
+          {formatJapaneseDate(reservation.reservationDate)} {reservation.startTimeLabel}〜
+          {reservation.endTimeLabel}
         </p>
         <p className="text-sm text-neutral-600">店舗：{reservation.storeName}</p>
         <p className="text-sm text-neutral-600">メニュー：{reservation.courseName}</p>
@@ -122,7 +125,15 @@ export default function MemberReservationPage() {
         </div>
       ) : (
         <div className="rounded-lg bg-neutral-100 p-4 text-sm text-neutral-600">
-          <p>キャンセル期限（施術日前日23:59）を過ぎています。</p>
+          <p>
+            キャンセル期限（
+            {formatJapaneseDate(
+              calculateCancellationDeadline(new Date(`${reservation.reservationDate}T00:00:00.000Z`))
+                .toISOString()
+                .slice(0, 10),
+            )}
+            の23:59）を過ぎています。
+          </p>
           <p>お電話にて店舗へご連絡ください：{reservation.storePhone}</p>
         </div>
       )}

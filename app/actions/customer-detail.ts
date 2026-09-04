@@ -18,7 +18,7 @@ export interface CustomerDetail {
   nameKana: string | null;
   email: string;
   phone: string;
-  birthDate: string;
+  birthMonth: number;
   gender: string;
   lineLinked: boolean;
   statusName: string;
@@ -53,7 +53,7 @@ export async function getCustomerDetail(memberId: number): Promise<CustomerDetai
     nameKana: member.nameKana,
     email: member.email,
     phone: member.phone,
-    birthDate: member.birthDate.toISOString().slice(0, 10),
+    birthMonth: member.birthMonth,
     gender: member.gender,
     lineLinked: member.lineUserId !== null,
     statusName: member.status.name,

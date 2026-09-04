@@ -1,6 +1,11 @@
 import { PrismaClient } from "@prisma/client";
+import { hashPassword } from "../lib/auth/password";
 
 const prisma = new PrismaClient();
+
+// 開発環境でログイン確認用に使う管理者アカウント。本番投入時は必ずパスワードを変更すること。
+const ADMIN_SEED_EMAIL = "admin@foresupa.example.com";
+const ADMIN_SEED_PASSWORD = "ForeSupa2026!";
 
 async function main() {
   const stores = await Promise.all(
@@ -74,7 +79,7 @@ async function main() {
     ),
   );
 
-  await Promise.all(
+  const courseCategories = await Promise.all(
     [
       { name: "頭皮ケア重点", sortOrder: 1, genderRestriction: "none" as const },
       { name: "頭皮マッサージ重点", sortOrder: 2, genderRestriction: "none" as const },
@@ -91,7 +96,112 @@ async function main() {
     ),
   );
 
+  // コース本体（カテゴリ×スタンダード/プレミアムの2段階）。
+  // Course.nameはカテゴリをまたいで一意ではないため、upsertではなく
+  // 「同一カテゴリ内に同名コースがなければ作成する」方式で冪等にする。
+  const courseSeeds = [
+    { categoryName: "頭皮ケア重点", name: "スタンダード", durationEstimateMin: 60, treatmentTimeMin: 50, price: 8000, sortOrder: 1, genderRestriction: "none" as const },
+    { categoryName: "頭皮ケア重点", name: "プレミアム", durationEstimateMin: 90, treatmentTimeMin: 80, price: 12000, sortOrder: 2, genderRestriction: "none" as const },
+    { categoryName: "頭皮マッサージ重点", name: "スタンダード", durationEstimateMin: 60, treatmentTimeMin: 50, price: 8500, sortOrder: 1, genderRestriction: "none" as const },
+    { categoryName: "頭皮マッサージ重点", name: "プレミアム", durationEstimateMin: 90, treatmentTimeMin: 80, price: 13000, sortOrder: 2, genderRestriction: "none" as const },
+    { categoryName: "ヘアエステ重点", name: "スタンダード", durationEstimateMin: 70, treatmentTimeMin: 60, price: 9000, sortOrder: 1, genderRestriction: "none" as const },
+    { categoryName: "ヘアエステ重点", name: "プレミアム", durationEstimateMin: 100, treatmentTimeMin: 90, price: 14000, sortOrder: 2, genderRestriction: "none" as const },
+    { categoryName: "フォーメン", name: "スタンダード", durationEstimateMin: 50, treatmentTimeMin: 40, price: 7000, sortOrder: 1, genderRestriction: "male" as const },
+    { categoryName: "フォーメン", name: "プレミアム", durationEstimateMin: 80, treatmentTimeMin: 70, price: 11000, sortOrder: 2, genderRestriction: "male" as const },
+    { categoryName: "スペシャルダブルケア", name: "スタンダード", durationEstimateMin: 100, treatmentTimeMin: 90, price: 15000, sortOrder: 1, genderRestriction: "none" as const },
+    { categoryName: "スペシャルダブルケア", name: "プレミアム", durationEstimateMin: 130, treatmentTimeMin: 120, price: 20000, sortOrder: 2, genderRestriction: "none" as const },
+    { categoryName: "ラグジュアリー", name: "スタンダード", durationEstimateMin: 120, treatmentTimeMin: 110, price: 22000, sortOrder: 1, genderRestriction: "none" as const },
+    { categoryName: "ラグジュアリー", name: "プレミアム", durationEstimateMin: 150, treatmentTimeMin: 140, price: 28000, sortOrder: 2, genderRestriction: "none" as const },
+  ];
+
+  let seededCourseCount = 0;
+  for (const seed of courseSeeds) {
+    const category = courseCategories.find((c) => c.name === seed.categoryName);
+    if (!category) continue;
+
+    const existing = await prisma.course.findFirst({
+      where: { categoryId: category.id, name: seed.name },
+    });
+    if (existing) continue;
+
+    await prisma.course.create({
+      data: {
+        categoryId: category.id,
+        name: seed.name,
+        durationEstimateMin: seed.durationEstimateMin,
+        treatmentTimeMin: seed.treatmentTimeMin,
+        price: seed.price,
+        genderRestriction: seed.genderRestriction,
+        sortOrder: seed.sortOrder,
+      },
+    });
+    seededCourseCount++;
+  }
+
+  // オプション（画面仕様書M-02 Step4に記載の4種）。
+  const optionSeeds = [
+    {
+      name: "ハンド・マッサージ",
+      durationMin: 15,
+      price: 1500,
+      genderRestriction: "none" as const,
+      requiresAdvanceBooking: true,
+      discountExempt: true,
+    },
+    {
+      name: "追加マッサージ",
+      durationMin: 15,
+      price: 1500,
+      genderRestriction: "none" as const,
+      requiresAdvanceBooking: true,
+      discountExempt: true,
+    },
+    {
+      name: "デコルテ・マッサージ",
+      durationMin: 20,
+      price: 2000,
+      genderRestriction: "male" as const,
+      requiresAdvanceBooking: true,
+      discountExempt: true,
+    },
+    {
+      name: "眼精疲労かっさ",
+      durationMin: 15,
+      price: 1500,
+      genderRestriction: "none" as const,
+      requiresAdvanceBooking: true,
+      discountExempt: true,
+    },
+  ];
+
+  let seededOptionCount = 0;
+  for (const seed of optionSeeds) {
+    const existing = await prisma.option.findFirst({ where: { name: seed.name } });
+    if (existing) continue;
+
+    await prisma.option.create({ data: seed });
+    seededOptionCount++;
+  }
+
+  // 管理者アカウント（本部権限）。email一意制約でupsertし、再実行時にパスワードを
+  // 意図せず再ハッシュ・上書きしないよう新規作成時のみハッシュ化する。
+  const existingAdmin = await prisma.admin.findUnique({ where: { email: ADMIN_SEED_EMAIL } });
+  if (!existingAdmin) {
+    await prisma.admin.create({
+      data: {
+        name: "システム管理者",
+        email: ADMIN_SEED_EMAIL,
+        passwordHash: await hashPassword(ADMIN_SEED_PASSWORD),
+        role: "hq",
+        storeId: null,
+      },
+    });
+  }
+
   console.log(`Seeded ${stores.length} stores.`);
+  console.log(`Seeded ${seededCourseCount} courses.`);
+  console.log(`Seeded ${seededOptionCount} options.`);
+  console.log(`Admin account: ${ADMIN_SEED_EMAIL} (created if not already present).`);
 }
 
 main()

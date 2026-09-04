@@ -131,7 +131,7 @@ model Member {
   phone          String   @db.VarChar(20)
   passwordHash   String?  @map("password_hash") @db.VarChar(255)
   gender         Gender
-  birthDate      DateTime @map("birth_date") @db.Date
+  birthMonth     Int      @map("birth_month")
   lineUserId     String?  @unique @map("line_user_id") @db.VarChar(100)
   visitCount     Int      @default(0) @map("visit_count")
   totalSpent     Int      @default(0) @map("total_spent")
@@ -147,7 +147,7 @@ model Member {
   emailLineLogs EmailLineLog[]
 
   @@index([statusId, visitCount])
-  @@index([birthDate])
+  @@index([birthMonth])
   @@map("members")
 }
 

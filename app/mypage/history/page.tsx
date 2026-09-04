@@ -9,6 +9,7 @@ import {
   listCustomerStatuses,
   type CustomerStatusItem,
 } from "@/app/actions/customer-statuses";
+import { formatJapaneseDate } from "@/lib/reservation/date-format";
 
 const STATUS_LABEL: Record<string, string> = {
   completed: "来店済み",
@@ -68,7 +69,7 @@ export default function MemberHistoryPage() {
             {history.map((h) => (
               <div key={h.id} className="rounded-lg border border-neutral-200 p-3">
                 <div className="flex items-center justify-between">
-                  <p className="font-medium text-neutral-800">{h.date}</p>
+                  <p className="font-medium text-neutral-800">{formatJapaneseDate(h.date)}</p>
                   <span className="text-xs text-neutral-500">{STATUS_LABEL[h.status] ?? h.status}</span>
                 </div>
                 <p className="text-sm text-neutral-600">

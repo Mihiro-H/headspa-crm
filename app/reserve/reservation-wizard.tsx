@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { WizardProgress } from "@/components/reservation/wizard-progress";
 import { StoreSelectStep } from "@/components/reservation/store-select-step";
 import { CategorySelectStep } from "@/components/reservation/category-select-step";
@@ -132,14 +133,37 @@ export function ReservationWizard({ memberGender }: { memberGender: MemberGender
     setState((s) => ({ ...s, step: 9, errorMessage: null }));
   }
 
+  function handleBack() {
+    setState((s) => ({ ...s, step: Math.max(1, s.step - 1), errorMessage: null }));
+  }
+
   const selectedStore = stores.find((s) => s.id === state.storeId);
   const selectedCourse = courses.find((c) => c.id === state.courseId);
   const selectedOptions = options.filter((o) => state.optionIds.includes(o.id));
   const selectedStaff = staff.find((s) => s.id === state.staffId);
 
   return (
-    <div className="mx-auto flex max-w-md flex-col gap-6 p-4">
+    <div className="mx-auto flex w-full max-w-md flex-col gap-6 p-4">
+      {state.step < 9 && (
+        <Link
+          href="/mypage"
+          className="self-start text-sm text-neutral-400 hover:text-primary-600"
+        >
+          ← マイページに戻る
+        </Link>
+      )}
+
       <WizardProgress currentStep={state.step} totalSteps={TOTAL_STEPS} />
+
+      {state.step > 1 && state.step <= 6 && (
+        <button
+          type="button"
+          onClick={handleBack}
+          className="self-start text-sm text-neutral-500 hover:text-primary-600"
+        >
+          ← 戻る
+        </button>
+      )}
 
       {state.step === 1 && (
         <StoreSelectStep

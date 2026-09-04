@@ -57,8 +57,7 @@ export async function runBirthdayJob(now: Date = new Date()): Promise<void> {
       if (!setting) return { targetCount: 0 };
 
       const currentMonth = now.getUTCMonth() + 1;
-      const members = await prisma.member.findMany();
-      const targets = members.filter((m) => m.birthDate.getUTCMonth() + 1 === currentMonth);
+      const targets = await prisma.member.findMany({ where: { birthMonth: currentMonth } });
 
       let count = 0;
       for (const member of targets) {

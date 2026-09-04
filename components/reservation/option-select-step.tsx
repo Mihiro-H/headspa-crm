@@ -35,7 +35,7 @@ export function OptionSelectStep({
         return (
           <label
             key={option.id}
-            className={`flex items-start gap-3 rounded-lg border p-4 shadow-sm ${
+            className={`flex w-full items-start gap-3 rounded-lg border p-4 shadow-sm ${
               check.allowed
                 ? "cursor-pointer border-neutral-200 bg-neutral-0"
                 : "cursor-not-allowed border-neutral-200 bg-neutral-100 opacity-50"

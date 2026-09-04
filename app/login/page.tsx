@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { MessageCircle, Eye, EyeOff } from "lucide-react";
 
 export default function MemberLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -24,17 +26,21 @@ export default function MemberLoginPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 p-4">
+    <div className="mx-auto flex w-full min-h-screen max-w-sm flex-col justify-center gap-4 p-4">
       <h1 className="font-heading text-2xl text-primary-700">フォレスパ</h1>
       {error && <p className="rounded-lg bg-error/10 p-3 text-sm text-error">{error}</p>}
       <button
         type="button"
         onClick={() => signIn("line", { callbackUrl: "/mypage" })}
-        className="h-12 w-full rounded-lg bg-[#06C755] font-medium text-white"
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#06C755] font-medium text-white"
       >
+        <MessageCircle className="h-5 w-5" aria-hidden="true" />
         LINEで連携ログイン
       </button>
-      <div className="flex items-center gap-3 text-xs text-neutral-400">
+      <p className="text-center text-xs text-neutral-500">
+        LINE連携すると、予約確認や前日リマインドなどのお知らせをLINEで受け取れます。
+      </p>
+      <div className="mt-2 flex items-center gap-3 text-xs text-neutral-400">
         <div className="h-px flex-1 bg-neutral-200" />
         または
         <div className="h-px flex-1 bg-neutral-200" />
@@ -42,17 +48,33 @@ export default function MemberLoginPage() {
       <input
         type="email"
         placeholder="メールアドレス"
+        autoComplete="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        className="h-12 rounded-md border border-neutral-300 px-3"
+        className="h-12 w-full rounded-md border border-neutral-300 px-3"
       />
-      <input
-        type="password"
-        placeholder="パスワード"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className="h-12 rounded-md border border-neutral-300 px-3"
-      />
+      <div className="relative">
+        <input
+          type={showPassword ? "text" : "password"}
+          placeholder="パスワード"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="h-12 w-full rounded-md border border-neutral-300 px-3 pr-10"
+        />
+        <button
+          type="button"
+          onClick={() => setShowPassword((v) => !v)}
+          aria-label={showPassword ? "パスワードを非表示にする" : "パスワードを表示する"}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+        >
+          {showPassword ? (
+            <EyeOff className="h-5 w-5" aria-hidden="true" />
+          ) : (
+            <Eye className="h-5 w-5" aria-hidden="true" />
+          )}
+        </button>
+      </div>
       <button
         type="button"
         disabled={submitting}

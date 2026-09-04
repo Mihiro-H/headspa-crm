@@ -1,4 +1,5 @@
 import { calculateCancellationDeadline } from "@/lib/reservation/cancellation-deadline";
+import { formatJapaneseDate } from "@/lib/reservation/date-format";
 import type { StoreListItem } from "@/app/actions/stores";
 import type { CourseListItem } from "@/app/actions/courses";
 import type { OptionListItem } from "@/app/actions/options";
@@ -32,7 +33,7 @@ export function ConfirmationStep({
   errorMessage,
 }: ConfirmationStepProps) {
   const deadline = calculateCancellationDeadline(new Date(`${reservationDate}T00:00:00.000Z`));
-  const deadlineLabel = `${deadline.toISOString().slice(0, 10)} 23:59`;
+  const deadlineLabel = formatJapaneseDate(deadline.toISOString().slice(0, 10));
   const total =
     (course?.finalPrice ?? 0) +
     options.reduce((sum, o) => sum + o.price, 0) +
@@ -59,17 +60,17 @@ export function ConfirmationStep({
         )}
         <p className="text-neutral-800">
           <span className="text-neutral-500">スタッフ：</span>
-          {staff ? staff.name : "指名なし（自動割当）"}
+          {staff ? staff.name : "指名なし"}
         </p>
         <p className="text-neutral-800">
           <span className="text-neutral-500">日時：</span>
-          {reservationDate} {startTimeLabel}〜
+          {formatJapaneseDate(reservationDate)} {startTimeLabel}〜
         </p>
         <p className="mt-2 text-lg font-medium text-neutral-800">合計 {formatYen(total)}</p>
       </div>
 
       <p className="text-xs text-neutral-500">
-        ご予約前日23:59（{deadlineLabel}）までマイページから変更・キャンセル可能です。
+        ご予約前日（{deadlineLabel}）の23:59まで、マイページから変更・キャンセルが可能です。
       </p>
 
       {errorMessage && (

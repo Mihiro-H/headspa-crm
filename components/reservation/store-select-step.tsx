@@ -14,7 +14,7 @@ export function StoreSelectStep({ stores, onSelect }: StoreSelectStepProps) {
           key={store.id}
           type="button"
           onClick={() => onSelect(store.id)}
-          className="rounded-lg border border-neutral-200 bg-neutral-0 p-4 text-left shadow-sm transition-colors hover:border-primary-300"
+          className="w-full rounded-lg border border-neutral-200 bg-neutral-0 p-4 text-left shadow-sm transition-colors hover:border-primary-300"
         >
           <p className="font-medium text-neutral-800">{store.name}</p>
           {store.nearestStation && (

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { getMypageSummary, type MypageSummary } from "@/app/actions/mypage-summary";
+import { formatJapaneseDate } from "@/lib/reservation/date-format";
+import { BrandSymbol } from "@/components/brand-symbol";
 
 export default function MypageTopPage() {
   const [summary, setSummary] = useState<MypageSummary | null>(null);
@@ -17,7 +19,10 @@ export default function MypageTopPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="font-heading text-lg text-primary-700">フォレスパ</h1>
+        <div className="flex items-center gap-2">
+          <BrandSymbol className="h-6 w-6 shrink-0" />
+          <h1 className="font-heading text-lg text-primary-700">フォレスパ</h1>
+        </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-neutral-700">{summary.name} 様</span>
           <span
@@ -36,7 +41,8 @@ export default function MypageTopPage() {
         >
           <p className="text-xs text-primary-600">次回のご予約</p>
           <p className="font-medium text-neutral-800">
-            {summary.nextReservation.reservationDate} {summary.nextReservation.startTimeLabel}〜
+            {formatJapaneseDate(summary.nextReservation.reservationDate)}{" "}
+            {summary.nextReservation.startTimeLabel}〜
           </p>
           <p className="text-sm text-neutral-600">
             {summary.nextReservation.storeName} / {summary.nextReservation.courseName}
