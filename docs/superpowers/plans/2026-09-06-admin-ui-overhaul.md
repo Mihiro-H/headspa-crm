@@ -1269,7 +1269,7 @@ export async function runMonthlyReportJob(now: Date = new Date()): Promise<void>
 - [ ] **Step 4: テストを実行して成功を確認する**
 
 Run: `npx vitest run lib/cron/reporting-jobs.test.ts`
-Expected: PASS（8件）
+Expected: PASS（7件）
 
 - [ ] **Step 5: Commit**
 
