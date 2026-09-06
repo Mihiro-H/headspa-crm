@@ -28,18 +28,18 @@ export async function listCustomerStatuses(): Promise<CustomerStatusItem[]> {
 
 export interface UpdateStatusConditionParams {
   statusId: number;
-  minVisitCount: number;
-  minTotalSpent: number;
-  conditionMode: StatusConditionMode;
+  minVisitCount?: number;
+  minTotalSpent?: number;
+  conditionMode?: StatusConditionMode;
 }
 
 export async function updateStatusCondition(params: UpdateStatusConditionParams): Promise<void> {
   await prisma.customerStatus.update({
     where: { id: params.statusId },
     data: {
-      minVisitCount: params.minVisitCount,
-      minTotalSpent: params.minTotalSpent,
-      conditionMode: params.conditionMode,
+      ...(params.minVisitCount !== undefined ? { minVisitCount: params.minVisitCount } : {}),
+      ...(params.minTotalSpent !== undefined ? { minTotalSpent: params.minTotalSpent } : {}),
+      ...(params.conditionMode !== undefined ? { conditionMode: params.conditionMode } : {}),
     },
   });
 }

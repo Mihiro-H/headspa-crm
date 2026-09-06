@@ -50,7 +50,7 @@ describe("updateStatusCondition", () => {
     vi.clearAllMocks();
   });
 
-  it("updates minVisitCount, minTotalSpent, and conditionMode for the given status", async () => {
+  it("updates minVisitCount, minTotalSpent, and conditionMode when all are provided", async () => {
     vi.mocked(prisma.customerStatus.update).mockResolvedValue({} as never);
 
     await updateStatusCondition({
@@ -63,6 +63,28 @@ describe("updateStatusCondition", () => {
     expect(prisma.customerStatus.update).toHaveBeenCalledWith({
       where: { id: 2 },
       data: { minVisitCount: 3, minTotalSpent: 30000, conditionMode: "and" },
+    });
+  });
+
+  it("updates only minVisitCount when only that field is provided", async () => {
+    vi.mocked(prisma.customerStatus.update).mockResolvedValue({} as never);
+
+    await updateStatusCondition({ statusId: 2, minVisitCount: 5 });
+
+    expect(prisma.customerStatus.update).toHaveBeenCalledWith({
+      where: { id: 2 },
+      data: { minVisitCount: 5 },
+    });
+  });
+
+  it("updates only conditionMode when only that field is provided", async () => {
+    vi.mocked(prisma.customerStatus.update).mockResolvedValue({} as never);
+
+    await updateStatusCondition({ statusId: 2, conditionMode: "or" });
+
+    expect(prisma.customerStatus.update).toHaveBeenCalledWith({
+      where: { id: 2 },
+      data: { conditionMode: "or" },
     });
   });
 });
