@@ -975,27 +975,77 @@ export async function listCustomerStatuses(): Promise<CustomerStatusItem[]> {
 
 export interface UpdateStatusConditionParams {
   statusId: number;
-  minVisitCount: number;
-  minTotalSpent: number;
-  conditionMode: StatusConditionMode;
+  minVisitCount?: number;
+  minTotalSpent?: number;
+  conditionMode?: StatusConditionMode;
 }
 
 export async function updateStatusCondition(params: UpdateStatusConditionParams): Promise<void> {
   await prisma.customerStatus.update({
     where: { id: params.statusId },
     data: {
-      minVisitCount: params.minVisitCount,
-      minTotalSpent: params.minTotalSpent,
-      conditionMode: params.conditionMode,
+      ...(params.minVisitCount !== undefined ? { minVisitCount: params.minVisitCount } : {}),
+      ...(params.minTotalSpent !== undefined ? { minTotalSpent: params.minTotalSpent } : {}),
+      ...(params.conditionMode !== undefined ? { conditionMode: params.conditionMode } : {}),
     },
   });
 }
 ```
 
+**⚠️ フィールドは全て省略可能（Partial）にすること。** Task 14のUIで最低来店回数・最低利用金額・条件を行ごとに別々の`onBlur`/`onChange`で個別保存する設計のため、常に3項目全部を送る実装だと、あるフィールドの保存リクエストがまだ返ってくる前に別フィールドを編集・保存すると、古い（編集前の）値で上書きしてしまう競合状態が発生する（コード品質レビューで発覚）。各呼び出しが実際に変更したフィールドだけを送るようにすることで、この問題を構造的に防ぐ。
+
 - [ ] **Step 4: テストを実行して成功を確認する**
 
+`app/actions/customer-statuses.test.ts`の`describe("updateStatusCondition", ...)`ブロックを以下に置き換える（既存の1件に加え、部分更新の2件を追加）：
+
+```ts
+describe("updateStatusCondition", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("updates minVisitCount, minTotalSpent, and conditionMode when all are provided", async () => {
+    vi.mocked(prisma.customerStatus.update).mockResolvedValue({} as never);
+
+    await updateStatusCondition({
+      statusId: 2,
+      minVisitCount: 3,
+      minTotalSpent: 30000,
+      conditionMode: "and",
+    });
+
+    expect(prisma.customerStatus.update).toHaveBeenCalledWith({
+      where: { id: 2 },
+      data: { minVisitCount: 3, minTotalSpent: 30000, conditionMode: "and" },
+    });
+  });
+
+  it("updates only minVisitCount when only that field is provided", async () => {
+    vi.mocked(prisma.customerStatus.update).mockResolvedValue({} as never);
+
+    await updateStatusCondition({ statusId: 2, minVisitCount: 5 });
+
+    expect(prisma.customerStatus.update).toHaveBeenCalledWith({
+      where: { id: 2 },
+      data: { minVisitCount: 5 },
+    });
+  });
+
+  it("updates only conditionMode when only that field is provided", async () => {
+    vi.mocked(prisma.customerStatus.update).mockResolvedValue({} as never);
+
+    await updateStatusCondition({ statusId: 2, conditionMode: "or" });
+
+    expect(prisma.customerStatus.update).toHaveBeenCalledWith({
+      where: { id: 2 },
+      data: { conditionMode: "or" },
+    });
+  });
+});
+```
+
 Run: `npx vitest run app/actions/customer-statuses.test.ts`
-Expected: PASS（2件）
+Expected: PASS（4件）
 
 - [ ] **Step 5: Commit**
 
@@ -2537,19 +2587,19 @@ export default function AdminCustomerStatusesPage() {
     listCustomerStatuses().then(setStatuses);
   }, []);
 
+  // 1フィールドずつ部分更新する。3項目まとめて送ると、他フィールドの保存が
+  // 未完了のうちに別フィールドを編集した場合、古い値で上書きしてしまう競合状態が起きる。
   async function handleSave(
     statusId: number,
-    minVisitCount: number,
-    minTotalSpent: number,
-    conditionMode: StatusConditionMode,
+    patch: Partial<{
+      minVisitCount: number;
+      minTotalSpent: number;
+      conditionMode: StatusConditionMode;
+    }>,
   ) {
     setSaving(statusId);
-    await updateStatusCondition({ statusId, minVisitCount, minTotalSpent, conditionMode });
-    setStatuses((prev) =>
-      prev.map((s) =>
-        s.id === statusId ? { ...s, minVisitCount, minTotalSpent, conditionMode } : s,
-      ),
-    );
+    await updateStatusCondition({ statusId, ...patch });
+    setStatuses((prev) => prev.map((s) => (s.id === statusId ? { ...s, ...patch } : s)));
     setSaving(null);
   }
 
@@ -2587,9 +2637,7 @@ export default function AdminCustomerStatusesPage() {
                     type="number"
                     min={0}
                     defaultValue={s.minVisitCount}
-                    onBlur={(e) =>
-                      handleSave(s.id, Number(e.target.value), s.minTotalSpent, s.conditionMode)
-                    }
+                    onBlur={(e) => handleSave(s.id, { minVisitCount: Number(e.target.value) })}
                     className="h-9 w-24 rounded-md border border-neutral-300 px-2"
                   />
                 </td>
@@ -2598,9 +2646,7 @@ export default function AdminCustomerStatusesPage() {
                     type="number"
                     min={0}
                     defaultValue={s.minTotalSpent}
-                    onBlur={(e) =>
-                      handleSave(s.id, s.minVisitCount, Number(e.target.value), s.conditionMode)
-                    }
+                    onBlur={(e) => handleSave(s.id, { minTotalSpent: Number(e.target.value) })}
                     className="h-9 w-28 rounded-md border border-neutral-300 px-2"
                   />
                 </td>
@@ -2608,12 +2654,7 @@ export default function AdminCustomerStatusesPage() {
                   <select
                     defaultValue={s.conditionMode}
                     onChange={(e) =>
-                      handleSave(
-                        s.id,
-                        s.minVisitCount,
-                        s.minTotalSpent,
-                        e.target.value as StatusConditionMode,
-                      )
+                      handleSave(s.id, { conditionMode: e.target.value as StatusConditionMode })
                     }
                     className="h-9 rounded-md border border-neutral-300 px-2"
                   >
