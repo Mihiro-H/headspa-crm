@@ -4315,8 +4315,58 @@ Expected: 既存テストを含め全件PASS
 
 ---
 
+### Task 22（追加）: 無効化した顧客をセグメント配信対象から除外
+
+Task 21の最終統合レビューで、`Member.isActive`（Task 4で追加）が`lib/customer/filter.ts`の`buildMemberWhereClause`（`app/actions/segment-audience.ts`のプレビューと`app/actions/segment-campaigns.ts`の実配信の両方が使用）で考慮されておらず、管理画面で「無効化」した顧客にもメール／LINEのセグメント配信が届いてしまう不整合が発覚。ユーザーと相談の上、配信対象からは除外する方針で合意（会員側ログイン・自分での予約は今回スコープ外のまま）。
+
+**Files:**
+- Modify: `lib/customer/filter.ts`
+- Test: `lib/customer/filter.test.ts`
+
+`buildMemberWhereClause`の戻り値に無条件で`isActive: true`を追加する：
+
+```ts
+export interface CustomerFilterCondition {
+  name?: string;
+  phone?: string;
+  statusId?: number;
+  storeId?: number;
+}
+
+// 無効化（退会・不正利用等）された顧客は、常にセグメント配信の対象から除外する。
+export function buildMemberWhereClause(condition: CustomerFilterCondition) {
+  return {
+    isActive: true,
+    ...(condition.name
+      ? { name: { contains: condition.name, mode: "insensitive" as const } }
+      : {}),
+    ...(condition.phone ? { phone: { contains: condition.phone } } : {}),
+    ...(condition.statusId ? { statusId: condition.statusId } : {}),
+    ...(condition.storeId ? { primaryStoreId: condition.storeId } : {}),
+  };
+}
+```
+
+`lib/customer/filter.test.ts`の全5テストの期待値に`isActive: true`を追加。`app/actions/segment-audience.test.ts`／`app/actions/segment-campaigns.test.ts`が`where`句を直接検証している場合は同様に更新する。
+
+Commit:
+```bash
+git add lib/customer/filter.ts lib/customer/filter.test.ts
+git commit -m "feat: exclude deactivated customers from segment delivery targeting
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01XpRhLMg71GDycF8WcpBjRJ"
+```
+
+**今回スコープ外として合意した残課題（対応せず）：**
+- 会員マイページの「次のステータスまで」表示（`app/actions/mypage-summary.ts`・`app/mypage/history/page.tsx`）が、最低利用金額・OR/AND条件を考慮せず来店回数のみで計算されている。金額条件付きステータスを設定した場合に会員へ誤った情報が表示されうるが、今回は対応しない。
+- 顧客の「無効化」はログイン・自分での予約作成をブロックしない（配信対象からの除外のみ対応）。
+- 電話予約登録ページ（`app/admin/(dashboard)/reservations/new/page.tsx`）の顧客検索は`searchCustomers`のデフォルト動作により無効化済み顧客を返さなくなった（`includeInactive`未指定のため）。これも今回は対応しない。
+
+---
+
 ## 完了条件
 
-- Task 1〜20のコミットがすべて完了している
+- Task 1〜20および追加のTask 22のコミットがすべて完了している
 - `npx tsc --noEmit` / `npx eslint .` / `npx vitest run` がすべてエラーなしで通る
 - ユーザーが `prisma migrate dev` を実行し、実機で全画面の動作確認を行う
