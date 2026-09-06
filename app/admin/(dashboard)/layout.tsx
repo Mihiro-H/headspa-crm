@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { NotificationBell } from "@/components/admin/notification-bell";
 
+const NAV_ICON_SIZE = 16;
+
 const NAV_ITEMS = [
   { href: "/admin/dashboard", label: "ダッシュボード", icon: LayoutDashboard },
   { href: "/admin/calendar", label: "予約カレンダー", icon: CalendarDays },
@@ -39,14 +41,16 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
   return (
     <div className="flex min-h-screen">
       <aside className="w-60 shrink-0 border-r border-neutral-200 bg-neutral-0 p-4">
-        <Image
-          src="/logo/foresupa_logo_transparent.png"
-          alt="フォレスパ"
-          width={160}
-          height={57}
-          className="h-auto w-40"
-          priority
-        />
+        <h1>
+          <Image
+            src="/logo/foresupa_logo_transparent.png"
+            alt="フォレスパ"
+            width={204}
+            height={72}
+            className="h-auto w-40"
+            priority
+          />
+        </h1>
         <nav className="mt-6 flex flex-col gap-1">
           {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
             <Link
@@ -54,7 +58,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
               href={href}
               className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-neutral-700 hover:bg-primary-50"
             >
-              <Icon size={16} className="shrink-0 text-neutral-500" />
+              <Icon size={NAV_ICON_SIZE} className="shrink-0 text-neutral-500" />
               {label}
             </Link>
           ))}
