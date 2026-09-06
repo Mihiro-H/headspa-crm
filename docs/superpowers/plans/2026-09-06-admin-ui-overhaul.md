@@ -274,15 +274,22 @@ model CustomerStatus {
 }
 ```
 
-を以下に置き換える：
+を以下に置き換える（`enum StatusConditionMode`は、このファイルの他のenumと同様に、それを使う`model CustomerStatus`より前に置く）：
 
 ```prisma
+enum StatusConditionMode {
+  or
+  and
+
+  @@map("status_condition_mode")
+}
+
 model CustomerStatus {
   id             Int                 @id @default(autoincrement()) @map("status_id")
   name           String              @unique @db.VarChar(50)
   minVisitCount  Int                 @map("min_visit_count")
   minTotalSpent  Int                 @default(0) @map("min_total_spent")
-  conditionMode  StatusConditionMode @default(or) @map("condition_mode")
+  conditionMode  StatusConditionMode @default(and) @map("condition_mode")
   colorCode      String              @map("color_code") @db.VarChar(7)
   sortOrder      Int                 @map("sort_order")
 
@@ -290,14 +297,9 @@ model CustomerStatus {
 
   @@map("customer_statuses")
 }
-
-enum StatusConditionMode {
-  or
-  and
-
-  @@map("status_condition_mode")
-}
 ```
+
+**⚠️ `conditionMode`の既定値は`and`にすること（`or`ではない）。** 理由：`minTotalSpent`の既定値は`0`であり、`Member.totalSpent`は常に0以上のため、`or`モードだと「回数条件 OR 金額条件（0円以上＝常にtrue）」＝常にtrueとなり、既存の全顧客が全ステータスの対象になってしまう（Task 8の`statusQualifies`ロジック参照）。`and`モードなら「回数条件 AND true」＝回数条件のみとなり、既存の来店回数ベースの判定結果がそのまま維持される。
 
 - [ ] **Step 3: Prisma Clientを再生成する**
 

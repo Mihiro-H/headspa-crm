@@ -183,4 +183,4 @@ interface ModalProps {
 ## 影響範囲・移行
 
 - スキーマ変更（`Member.isActive`、`CustomerStatus.minTotalSpent`／`conditionMode`）は `prisma migrate dev` の実行が必要。サンドボックス制約により、この実行はユーザーに依頼する
-- 既存データ：`isActive` は既定 `true`、`minTotalSpent` は既定 `0`、`conditionMode` は既定 `OR` とすることで、既存の顧客ステータス判定結果に変更が生じないようにする
+- 既存データ：`isActive` は既定 `true`、`minTotalSpent` は既定 `0`、`conditionMode` は既定 `AND` とすることで、既存の顧客ステータス判定結果に変更が生じないようにする（`minTotalSpent=0`のとき金額条件は常にtrueになるため、`OR`だと回数条件を無視して全顧客が対象になってしまう。`AND`なら「回数条件 AND 常にtrue」＝回数条件のみとなり、既存の判定結果を維持できる）
