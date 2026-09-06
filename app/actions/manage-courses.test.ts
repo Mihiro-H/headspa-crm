@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { listAllCoursesForManagement, updateCoursePrice } from "./manage-courses";
+import { listAllCoursesForManagement, updateCoursePrice, createCourse } from "./manage-courses";
 import { prisma } from "@/lib/db";
 
 vi.mock("@/lib/db", () => ({
   prisma: {
-    course: { findMany: vi.fn(), update: vi.fn() },
+    course: { findMany: vi.fn(), update: vi.fn(), create: vi.fn() },
   },
 }));
 
@@ -60,6 +60,39 @@ describe("updateCoursePrice", () => {
     expect(prisma.course.update).toHaveBeenCalledWith({
       where: { id: 1 },
       data: { price: 9000 },
+    });
+  });
+});
+
+describe("createCourse", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("creates a course under the given category", async () => {
+    vi.mocked(prisma.course.create).mockResolvedValue({ id: 7 } as never);
+
+    const result = await createCourse({
+      categoryId: 3,
+      name: "プレミアム",
+      durationEstimateMin: 90,
+      treatmentTimeMin: 75,
+      price: 15000,
+      genderRestriction: "none",
+      sortOrder: 1,
+    });
+
+    expect(result).toEqual({ courseId: 7 });
+    expect(prisma.course.create).toHaveBeenCalledWith({
+      data: {
+        categoryId: 3,
+        name: "プレミアム",
+        durationEstimateMin: 90,
+        treatmentTimeMin: 75,
+        price: 15000,
+        genderRestriction: "none",
+        sortOrder: 1,
+      },
     });
   });
 });

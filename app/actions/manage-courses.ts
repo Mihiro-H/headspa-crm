@@ -43,3 +43,28 @@ export async function updateCoursePrice(params: UpdateCoursePriceParams): Promis
     data: { price: params.price },
   });
 }
+
+export interface CreateCourseParams {
+  categoryId: number;
+  name: string;
+  durationEstimateMin: number;
+  treatmentTimeMin: number;
+  price: number;
+  genderRestriction: GenderRestriction;
+  sortOrder: number;
+}
+
+export async function createCourse(params: CreateCourseParams): Promise<{ courseId: number }> {
+  const course = await prisma.course.create({
+    data: {
+      categoryId: params.categoryId,
+      name: params.name,
+      durationEstimateMin: params.durationEstimateMin,
+      treatmentTimeMin: params.treatmentTimeMin,
+      price: params.price,
+      genderRestriction: params.genderRestriction,
+      sortOrder: params.sortOrder,
+    },
+  });
+  return { courseId: course.id };
+}
