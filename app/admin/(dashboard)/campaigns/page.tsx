@@ -1,66 +1,148 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { listCampaigns, createCampaign, type CampaignListItem } from "@/app/actions/manage-campaigns";
+import { Pencil, Trash2, RotateCcw, Plus } from "lucide-react";
+import {
+  listCampaigns,
+  createCampaign,
+  updateCampaign,
+  deleteCampaign,
+  republishCampaign,
+  type CampaignListItem,
+} from "@/app/actions/manage-campaigns";
 import { listAllCoursesForManagement, type ManagedCourse } from "@/app/actions/manage-courses";
 import { listCourseCategories, type CourseCategoryListItem } from "@/app/actions/course-categories";
 import { listStores, type StoreListItem } from "@/app/actions/stores";
+import { Modal } from "@/components/ui/modal";
 
 function formatYen(amount: number): string {
   return `¥${amount.toLocaleString("ja-JP")}`;
 }
+
+const EMPTY_FORM = {
+  name: "",
+  discountType: "percentage" as "percentage" | "fixed_amount",
+  discountValue: 10,
+  startDate: "",
+  endDate: "",
+  priority: 0,
+  targetStoreId: null as number | null,
+  courseIds: [] as number[],
+  categoryIds: [] as number[],
+};
 
 export default function AdminCampaignsPage() {
   const [campaigns, setCampaigns] = useState<CampaignListItem[]>([]);
   const [courses, setCourses] = useState<ManagedCourse[]>([]);
   const [categories, setCategories] = useState<CourseCategoryListItem[]>([]);
   const [stores, setStores] = useState<StoreListItem[]>([]);
+  const [includeUnpublished, setIncludeUnpublished] = useState(false);
 
-  const [name, setName] = useState("");
-  const [discountType, setDiscountType] = useState<"percentage" | "fixed_amount">("percentage");
-  const [discountValue, setDiscountValue] = useState(10);
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [priority, setPriority] = useState(0);
-  const [targetStoreId, setTargetStoreId] = useState<number | null>(null);
-  const [courseIds, setCourseIds] = useState<number[]>([]);
-  const [categoryIds, setCategoryIds] = useState<number[]>([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
 
   function reload() {
-    listCampaigns().then(setCampaigns);
+    listCampaigns({ includeUnpublished }).then(setCampaigns);
   }
 
   useEffect(() => {
     reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [includeUnpublished]);
+
+  useEffect(() => {
     listAllCoursesForManagement().then(setCourses);
     listCourseCategories().then(setCategories);
     listStores().then(setStores);
   }, []);
 
+  function openCreate() {
+    setEditingId(null);
+    setForm(EMPTY_FORM);
+    setModalOpen(true);
+  }
+
+  function openEdit(c: CampaignListItem) {
+    setEditingId(c.id);
+    setForm({
+      name: c.name,
+      discountType: c.discountType,
+      discountValue: c.discountValue,
+      startDate: c.startDate,
+      endDate: c.endDate,
+      priority: c.priority,
+      targetStoreId: c.targetStoreId,
+      courseIds: c.courseIds,
+      categoryIds: c.categoryIds,
+    });
+    setModalOpen(true);
+  }
+
   async function handleSubmit() {
     setSubmitting(true);
-    await createCampaign({
-      name,
-      discountType,
-      discountValue,
-      startDate,
-      endDate,
-      priority,
-      targetStoreId,
-      courseIds,
-      categoryIds,
-    });
+    if (editingId) {
+      await updateCampaign({ campaignId: editingId, ...form });
+    } else {
+      await createCampaign(form);
+    }
     setSubmitting(false);
-    setName("");
-    setCourseIds([]);
-    setCategoryIds([]);
+    setModalOpen(false);
     reload();
+  }
+
+  async function handleDelete(c: CampaignListItem) {
+    if (!window.confirm(`「${c.name}」を無効化しますか？`)) return;
+    await deleteCampaign(c.id);
+    reload();
+  }
+
+  async function handleRestore(c: CampaignListItem) {
+    await republishCampaign(c.id);
+    reload();
+  }
+
+  function toggleCourse(id: number) {
+    setForm((f) => ({
+      ...f,
+      courseIds: f.courseIds.includes(id)
+        ? f.courseIds.filter((c) => c !== id)
+        : [...f.courseIds, id],
+    }));
+  }
+
+  function toggleCategory(id: number) {
+    setForm((f) => ({
+      ...f,
+      categoryIds: f.categoryIds.includes(id)
+        ? f.categoryIds.filter((c) => c !== id)
+        : [...f.categoryIds, id],
+    }));
   }
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-heading text-2xl text-primary-700">キャンペーン管理</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="font-heading text-2xl text-primary-700">キャンペーン管理</h1>
+        <button
+          type="button"
+          onClick={openCreate}
+          className="flex h-10 items-center gap-1 rounded-lg bg-accent-500 px-4 text-sm font-medium text-white"
+        >
+          <Plus size={16} />
+          新規作成
+        </button>
+      </div>
+
+      <label className="flex items-center gap-2 text-sm text-neutral-600">
+        <input
+          type="checkbox"
+          checked={includeUnpublished}
+          onChange={(e) => setIncludeUnpublished(e.target.checked)}
+        />
+        無効なキャンペーンも表示
+      </label>
 
       <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm">
         <table className="w-full text-sm">
@@ -72,11 +154,15 @@ export default function AdminCampaignsPage() {
               <th className="p-3">対象店舗</th>
               <th className="p-3">対象</th>
               <th className="p-3">優先度</th>
+              <th className="p-3"></th>
             </tr>
           </thead>
           <tbody>
             {campaigns.map((c) => (
-              <tr key={c.id} className="border-b border-neutral-100 last:border-0">
+              <tr
+                key={c.id}
+                className={`border-b border-neutral-100 last:border-0 ${!c.isPublished ? "opacity-50" : ""}`}
+              >
                 <td className="p-3">{c.name}</td>
                 <td className="p-3">
                   {c.discountType === "percentage" ? `${c.discountValue}%` : formatYen(c.discountValue)}
@@ -87,6 +173,37 @@ export default function AdminCampaignsPage() {
                 <td className="p-3">{c.targetStoreName}</td>
                 <td className="p-3">{c.targetNames.join("、") || "—"}</td>
                 <td className="p-3">{c.priority}</td>
+                <td className="p-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(c)}
+                      className="text-neutral-500 hover:text-primary-600"
+                      aria-label="編集"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    {c.isPublished ? (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(c)}
+                        className="text-neutral-500 hover:text-error"
+                        aria-label="削除"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleRestore(c)}
+                        className="text-neutral-500 hover:text-primary-600"
+                        aria-label="復元"
+                      >
+                        <RotateCcw size={16} />
+                      </button>
+                    )}
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -96,124 +213,122 @@ export default function AdminCampaignsPage() {
         )}
       </div>
 
-      <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-neutral-0 p-4 shadow-sm">
-        <h2 className="font-heading text-lg text-primary-700">新規キャンペーン作成</h2>
+      <Modal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        title={editingId ? "キャンペーンを編集" : "新規キャンペーン作成"}
+      >
+        <div className="flex flex-col gap-3">
+          <input
+            type="text"
+            placeholder="キャンペーン名"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            className="h-10 rounded-md border border-neutral-300 px-3 text-sm"
+          />
 
-        <input
-          type="text"
-          placeholder="キャンペーン名"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="h-10 rounded-md border border-neutral-300 px-3 text-sm"
-        />
+          <div className="flex gap-3">
+            <select
+              value={form.discountType}
+              onChange={(e) =>
+                setForm({ ...form, discountType: e.target.value as "percentage" | "fixed_amount" })
+              }
+              className="h-10 rounded-md border border-neutral-300 px-3 text-sm"
+            >
+              <option value="percentage">定率（%）</option>
+              <option value="fixed_amount">定額（円）</option>
+            </select>
+            <input
+              type="number"
+              min={0}
+              value={form.discountValue}
+              onChange={(e) => setForm({ ...form, discountValue: Number(e.target.value) })}
+              className="h-10 w-32 rounded-md border border-neutral-300 px-3 text-sm"
+            />
+          </div>
 
-        <div className="flex gap-3">
+          <div className="flex gap-3">
+            <input
+              type="date"
+              value={form.startDate}
+              onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+              className="h-10 rounded-md border border-neutral-300 px-3 text-sm"
+            />
+            <input
+              type="date"
+              value={form.endDate}
+              onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+              className="h-10 rounded-md border border-neutral-300 px-3 text-sm"
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <label className="text-sm text-neutral-600">優先度</label>
+            <input
+              type="number"
+              value={form.priority}
+              onChange={(e) => setForm({ ...form, priority: Number(e.target.value) })}
+              className="h-10 w-24 rounded-md border border-neutral-300 px-3 text-sm"
+            />
+          </div>
+
           <select
-            value={discountType}
-            onChange={(e) => setDiscountType(e.target.value as "percentage" | "fixed_amount")}
+            value={form.targetStoreId ?? ""}
+            onChange={(e) =>
+              setForm({ ...form, targetStoreId: e.target.value ? Number(e.target.value) : null })
+            }
             className="h-10 rounded-md border border-neutral-300 px-3 text-sm"
           >
-            <option value="percentage">定率（%）</option>
-            <option value="fixed_amount">定額（円）</option>
+            <option value="">全店舗</option>
+            {stores.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
           </select>
-          <input
-            type="number"
-            min={0}
-            value={discountValue}
-            onChange={(e) => setDiscountValue(Number(e.target.value))}
-            className="h-10 w-32 rounded-md border border-neutral-300 px-3 text-sm"
-          />
-        </div>
 
-        <div className="flex gap-3">
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="h-10 rounded-md border border-neutral-300 px-3 text-sm"
-          />
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="h-10 rounded-md border border-neutral-300 px-3 text-sm"
-          />
-        </div>
-
-        <div className="flex items-center gap-3">
-          <label className="text-sm text-neutral-600">優先度</label>
-          <input
-            type="number"
-            value={priority}
-            onChange={(e) => setPriority(Number(e.target.value))}
-            className="h-10 w-24 rounded-md border border-neutral-300 px-3 text-sm"
-          />
-        </div>
-
-        <select
-          value={targetStoreId ?? ""}
-          onChange={(e) => setTargetStoreId(e.target.value ? Number(e.target.value) : null)}
-          className="h-10 rounded-md border border-neutral-300 px-3 text-sm"
-        >
-          <option value="">全店舗</option>
-          {stores.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-
-        <div>
-          <p className="mb-1 text-sm text-neutral-600">対象カテゴリ</p>
-          <div className="flex flex-wrap gap-3">
-            {categories.map((cat) => (
-              <label key={cat.id} className="flex items-center gap-1 text-sm">
-                <input
-                  type="checkbox"
-                  checked={categoryIds.includes(cat.id)}
-                  onChange={() =>
-                    setCategoryIds((ids) =>
-                      ids.includes(cat.id) ? ids.filter((id) => id !== cat.id) : [...ids, cat.id],
-                    )
-                  }
-                />
-                {cat.name}
-              </label>
-            ))}
+          <div>
+            <p className="mb-1 text-sm text-neutral-600">対象カテゴリ</p>
+            <div className="flex flex-wrap gap-3">
+              {categories.map((cat) => (
+                <label key={cat.id} className="flex items-center gap-1 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.categoryIds.includes(cat.id)}
+                    onChange={() => toggleCategory(cat.id)}
+                  />
+                  {cat.name}
+                </label>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div>
-          <p className="mb-1 text-sm text-neutral-600">対象コース</p>
-          <div className="flex flex-wrap gap-3">
-            {courses.map((course) => (
-              <label key={course.id} className="flex items-center gap-1 text-sm">
-                <input
-                  type="checkbox"
-                  checked={courseIds.includes(course.id)}
-                  onChange={() =>
-                    setCourseIds((ids) =>
-                      ids.includes(course.id)
-                        ? ids.filter((id) => id !== course.id)
-                        : [...ids, course.id],
-                    )
-                  }
-                />
-                {course.name}
-              </label>
-            ))}
+          <div>
+            <p className="mb-1 text-sm text-neutral-600">対象コース</p>
+            <div className="flex flex-wrap gap-3">
+              {courses.map((course) => (
+                <label key={course.id} className="flex items-center gap-1 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.courseIds.includes(course.id)}
+                    onChange={() => toggleCourse(course.id)}
+                  />
+                  {course.name}
+                </label>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <button
-          type="button"
-          disabled={submitting || !name || !startDate || !endDate}
-          onClick={handleSubmit}
-          className="h-12 rounded-lg bg-accent-500 font-medium text-white disabled:opacity-50"
-        >
-          キャンペーンを作成する
-        </button>
-      </div>
+          <button
+            type="button"
+            disabled={submitting || !form.name || !form.startDate || !form.endDate}
+            onClick={handleSubmit}
+            className="h-12 rounded-lg bg-accent-500 font-medium text-white disabled:opacity-50"
+          >
+            {editingId ? "更新する" : "キャンペーンを作成する"}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
