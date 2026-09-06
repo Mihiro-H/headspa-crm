@@ -3120,7 +3120,14 @@ export default function AdminMenuPage() {
   async function handleCreate() {
     if (!form.categoryId) return;
     setCreating(true);
-    await createCourse({ ...form, categoryId: form.categoryId });
+    // 未設定のままだと新規コースが常にsortOrder:0となり、既存コースより前に
+    // 表示されてしまうため、同カテゴリ内の最大sortOrder+1を計算して渡す。
+    const coursesInCategory = courses.filter((c) => c.categoryId === form.categoryId);
+    const nextSortOrder =
+      coursesInCategory.length > 0
+        ? Math.max(...coursesInCategory.map((c) => c.sortOrder)) + 1
+        : 0;
+    await createCourse({ ...form, categoryId: form.categoryId, sortOrder: nextSortOrder });
     setCreating(false);
     setForm(EMPTY_FORM);
     setModalOpen(false);
@@ -3278,6 +3285,47 @@ Expected: エラーなし
 ```bash
 git add "app/admin/(dashboard)/menu/page.tsx"
 git commit -m "feat: add new-course modal to menu management page
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01XpRhLMg71GDycF8WcpBjRJ"
+```
+
+**⚠️ 実装後の追加修正（コード品質レビューで発覚）：** `EMPTY_FORM.sortOrder`が常に`0`のまま送信されるため、新規コースが同カテゴリ内の既存コースより前に表示されてしまう不具合がある。以下2点を追加で修正する。
+
+1. `app/actions/manage-courses.ts`の`ManagedCourse`インターフェースに`sortOrder: number;`を追加し、`listAllCoursesForManagement`のマッピングに`sortOrder: c.sortOrder,`を追加する（Prismaクエリ自体は既に`course.sortOrder`を取得済みなので、DTOへの露出のみ）。対応するテストのモック・期待値にも`sortOrder`を追加する。
+
+2. `app/admin/(dashboard)/menu/page.tsx`の`handleCreate`を以下に置き換える：
+
+```tsx
+  async function handleCreate() {
+    if (!form.categoryId) return;
+    setCreating(true);
+    // 未設定のままだと新規コースが常にsortOrder:0となり、既存コースより前に
+    // 表示されてしまうため、同カテゴリ内の最大sortOrder+1を計算して渡す。
+    const coursesInCategory = courses.filter((c) => c.categoryId === form.categoryId);
+    const nextSortOrder =
+      coursesInCategory.length > 0
+        ? Math.max(...coursesInCategory.map((c) => c.sortOrder)) + 1
+        : 0;
+    await createCourse({ ...form, categoryId: form.categoryId, sortOrder: nextSortOrder });
+    setCreating(false);
+    setForm(EMPTY_FORM);
+    setModalOpen(false);
+    reload();
+  }
+```
+
+Commit（1と2はそれぞれ別コミットでよい）:
+
+```bash
+git add app/actions/manage-courses.ts app/actions/manage-courses.test.ts
+git commit -m "feat: expose sortOrder on ManagedCourse
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01XpRhLMg71GDycF8WcpBjRJ"
+
+git add "app/admin/(dashboard)/menu/page.tsx"
+git commit -m "fix: compute correct sortOrder for newly created courses (Task 16)
 
 Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01XpRhLMg71GDycF8WcpBjRJ"
