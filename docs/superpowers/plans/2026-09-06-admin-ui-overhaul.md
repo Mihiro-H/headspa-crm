@@ -1977,6 +1977,68 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01XpRhLMg71GDycF8WcpBjRJ"
 ```
 
+**⚠️ 実装後の追加修正（コード品質レビューで発覚）：** `deleteCampaign`（論理削除）に対応する復元操作が存在しないと指摘された（Task 6の`deactivateCustomer`/`reactivateCustomer`の対と非対称）。以下を追加する。
+
+- [ ] **Step 6: `republishCampaign`を追加する（失敗するテスト→実装→成功確認→commit）**
+
+`app/actions/manage-campaigns.test.ts`の末尾（`describe("deleteCampaign", ...)`の後）に追加：
+
+```ts
+
+describe("republishCampaign", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("re-publishes a previously deleted campaign", async () => {
+    vi.mocked(prisma.campaign.update).mockResolvedValue({} as never);
+
+    await republishCampaign(1);
+
+    expect(prisma.campaign.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { isPublished: true },
+    });
+  });
+});
+```
+
+importに`republishCampaign`を追加：
+
+```ts
+import {
+  listCampaigns,
+  createCampaign,
+  updateCampaign,
+  deleteCampaign,
+  republishCampaign,
+} from "./manage-campaigns";
+```
+
+`app/actions/manage-campaigns.ts`の末尾（`deleteCampaign`の後）に追加：
+
+```ts
+
+// deleteCampaignで無効化したキャンペーンを再度有効化する（deactivateCustomer/reactivateCustomerと対になる操作）。
+export async function republishCampaign(campaignId: number): Promise<void> {
+  await prisma.campaign.update({
+    where: { id: campaignId },
+    data: { isPublished: true },
+  });
+}
+```
+
+Run: `npx vitest run app/actions/manage-campaigns.test.ts`
+Expected: PASS（6件）
+
+```bash
+git add app/actions/manage-campaigns.ts app/actions/manage-campaigns.test.ts
+git commit -m "feat: add republishCampaign to restore a soft-deleted campaign
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01XpRhLMg71GDycF8WcpBjRJ"
+```
+
 ---
 
 ### Task 13: 顧客管理一覧ページの拡張
@@ -2602,12 +2664,13 @@ Claude-Session: https://claude.ai/code/session_01XpRhLMg71GDycF8WcpBjRJ"
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pencil, Trash2, Plus } from "lucide-react";
+import { Pencil, Trash2, RotateCcw, Plus } from "lucide-react";
 import {
   listCampaigns,
   createCampaign,
   updateCampaign,
   deleteCampaign,
+  republishCampaign,
   type CampaignListItem,
 } from "@/app/actions/manage-campaigns";
 import { listAllCoursesForManagement, type ManagedCourse } from "@/app/actions/manage-courses";
@@ -2698,6 +2761,11 @@ export default function AdminCampaignsPage() {
     reload();
   }
 
+  async function handleRestore(c: CampaignListItem) {
+    await republishCampaign(c.id);
+    reload();
+  }
+
   function toggleCourse(id: number) {
     setForm((f) => ({
       ...f,
@@ -2778,14 +2846,25 @@ export default function AdminCampaignsPage() {
                     >
                       <Pencil size={16} />
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(c)}
-                      className="text-neutral-500 hover:text-error"
-                      aria-label="削除"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    {c.isPublished ? (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(c)}
+                        className="text-neutral-500 hover:text-error"
+                        aria-label="削除"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleRestore(c)}
+                        className="text-neutral-500 hover:text-primary-600"
+                        aria-label="復元"
+                      >
+                        <RotateCcw size={16} />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
