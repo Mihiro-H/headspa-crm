@@ -22,6 +22,7 @@ describe("listAllCoursesForManagement", () => {
         durationEstimateMin: 60,
         genderRestriction: "none",
         isPublished: true,
+        sortOrder: 1,
         category: { id: 3, name: "頭皮ケア重点" },
       },
     ] as never);
@@ -38,6 +39,7 @@ describe("listAllCoursesForManagement", () => {
         isPublished: true,
         categoryId: 3,
         categoryName: "頭皮ケア重点",
+        sortOrder: 1,
       },
     ]);
     expect(prisma.course.findMany).toHaveBeenCalledWith({

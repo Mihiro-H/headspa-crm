@@ -12,6 +12,7 @@ export interface ManagedCourse {
   isPublished: boolean;
   categoryId: number;
   categoryName: string;
+  sortOrder: number;
 }
 
 export async function listAllCoursesForManagement(): Promise<ManagedCourse[]> {
@@ -29,6 +30,7 @@ export async function listAllCoursesForManagement(): Promise<ManagedCourse[]> {
     isPublished: c.isPublished,
     categoryId: c.category.id,
     categoryName: c.category.name,
+    sortOrder: c.sortOrder,
   }));
 }
 
