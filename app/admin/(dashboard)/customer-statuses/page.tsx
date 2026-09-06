@@ -16,19 +16,19 @@ export default function AdminCustomerStatusesPage() {
     listCustomerStatuses().then(setStatuses);
   }, []);
 
+  // 1フィールドずつ部分更新する。3項目まとめて送ると、他フィールドの保存が
+  // 未完了のうちに別フィールドを編集した場合、古い値で上書きしてしまう競合状態が起きる。
   async function handleSave(
     statusId: number,
-    minVisitCount: number,
-    minTotalSpent: number,
-    conditionMode: StatusConditionMode,
+    patch: Partial<{
+      minVisitCount: number;
+      minTotalSpent: number;
+      conditionMode: StatusConditionMode;
+    }>,
   ) {
     setSaving(statusId);
-    await updateStatusCondition({ statusId, minVisitCount, minTotalSpent, conditionMode });
-    setStatuses((prev) =>
-      prev.map((s) =>
-        s.id === statusId ? { ...s, minVisitCount, minTotalSpent, conditionMode } : s,
-      ),
-    );
+    await updateStatusCondition({ statusId, ...patch });
+    setStatuses((prev) => prev.map((s) => (s.id === statusId ? { ...s, ...patch } : s)));
     setSaving(null);
   }
 
@@ -66,9 +66,7 @@ export default function AdminCustomerStatusesPage() {
                     type="number"
                     min={0}
                     defaultValue={s.minVisitCount}
-                    onBlur={(e) =>
-                      handleSave(s.id, Number(e.target.value), s.minTotalSpent, s.conditionMode)
-                    }
+                    onBlur={(e) => handleSave(s.id, { minVisitCount: Number(e.target.value) })}
                     className="h-9 w-24 rounded-md border border-neutral-300 px-2"
                   />
                 </td>
@@ -77,9 +75,7 @@ export default function AdminCustomerStatusesPage() {
                     type="number"
                     min={0}
                     defaultValue={s.minTotalSpent}
-                    onBlur={(e) =>
-                      handleSave(s.id, s.minVisitCount, Number(e.target.value), s.conditionMode)
-                    }
+                    onBlur={(e) => handleSave(s.id, { minTotalSpent: Number(e.target.value) })}
                     className="h-9 w-28 rounded-md border border-neutral-300 px-2"
                   />
                 </td>
@@ -87,12 +83,7 @@ export default function AdminCustomerStatusesPage() {
                   <select
                     defaultValue={s.conditionMode}
                     onChange={(e) =>
-                      handleSave(
-                        s.id,
-                        s.minVisitCount,
-                        s.minTotalSpent,
-                        e.target.value as StatusConditionMode,
-                      )
+                      handleSave(s.id, { conditionMode: e.target.value as StatusConditionMode })
                     }
                     className="h-9 rounded-md border border-neutral-300 px-2"
                   >
