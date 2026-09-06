@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Bell } from "lucide-react";
 import {
   listNotifications,
   getUnreadNotificationCount,
@@ -56,7 +57,7 @@ export function NotificationBell() {
         onClick={handleToggle}
         className="relative flex h-9 w-9 items-center justify-center rounded-full hover:bg-primary-50"
       >
-        🔔
+        <Bell size={20} strokeWidth={1.75} />
         {unreadCount > 0 && (
           <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-error text-[10px] text-white">
             {unreadCount > 9 ? "9+" : unreadCount}
