@@ -1,24 +1,58 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Plus } from "lucide-react";
 import {
   listAllCoursesForManagement,
   updateCoursePrice,
+  createCourse,
   type ManagedCourse,
 } from "@/app/actions/manage-courses";
+import { listCourseCategories, type CourseCategoryListItem } from "@/app/actions/course-categories";
+import type { GenderRestriction } from "@/lib/reservation/gender-restriction";
+import { Modal } from "@/components/ui/modal";
+
+const EMPTY_FORM = {
+  categoryId: null as number | null,
+  name: "",
+  durationEstimateMin: 60,
+  treatmentTimeMin: 50,
+  price: 0,
+  genderRestriction: "none" as GenderRestriction,
+  sortOrder: 0,
+};
 
 export default function AdminMenuPage() {
   const [courses, setCourses] = useState<ManagedCourse[]>([]);
+  const [categories, setCategories] = useState<CourseCategoryListItem[]>([]);
   const [saving, setSaving] = useState<number | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [creating, setCreating] = useState(false);
+
+  function reload() {
+    listAllCoursesForManagement().then(setCourses);
+  }
 
   useEffect(() => {
-    listAllCoursesForManagement().then(setCourses);
+    reload();
+    listCourseCategories().then(setCategories);
   }, []);
 
   async function handleSave(courseId: number, price: number) {
     setSaving(courseId);
     await updateCoursePrice({ courseId, price });
     setSaving(null);
+  }
+
+  async function handleCreate() {
+    if (!form.categoryId) return;
+    setCreating(true);
+    await createCourse({ ...form, categoryId: form.categoryId });
+    setCreating(false);
+    setForm(EMPTY_FORM);
+    setModalOpen(false);
+    reload();
   }
 
   const grouped = courses.reduce<Record<string, ManagedCourse[]>>((acc, c) => {
@@ -29,7 +63,17 @@ export default function AdminMenuPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-heading text-2xl text-primary-700">メニュー・料金管理</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="font-heading text-2xl text-primary-700">メニュー・料金管理</h1>
+        <button
+          type="button"
+          onClick={() => setModalOpen(true)}
+          className="flex h-10 items-center gap-1 rounded-lg bg-primary-500 px-4 text-sm font-medium text-white"
+        >
+          <Plus size={16} />
+          新規登録
+        </button>
+      </div>
 
       {Object.entries(grouped).map(([categoryName, items]) => (
         <div key={categoryName} className="flex flex-col gap-2">
@@ -68,6 +112,85 @@ export default function AdminMenuPage() {
           </div>
         </div>
       ))}
+
+      <Modal open={modalOpen} onOpenChange={setModalOpen} title="新規コース登録">
+        <div className="flex flex-col gap-3">
+          <select
+            value={form.categoryId ?? ""}
+            onChange={(e) =>
+              setForm({ ...form, categoryId: e.target.value ? Number(e.target.value) : null })
+            }
+            className="h-10 rounded-md border border-neutral-300 px-2"
+          >
+            <option value="">カテゴリを選択</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
+          </select>
+          <input
+            type="text"
+            placeholder="コース名"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            className="h-10 rounded-md border border-neutral-300 px-2"
+          />
+          <div className="flex gap-3">
+            <label className="flex flex-col gap-1 text-xs text-neutral-500">
+              所要時間（分）
+              <input
+                type="number"
+                min={0}
+                value={form.durationEstimateMin}
+                onChange={(e) =>
+                  setForm({ ...form, durationEstimateMin: Number(e.target.value) })
+                }
+                className="h-10 w-28 rounded-md border border-neutral-300 px-2"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs text-neutral-500">
+              施術時間（分）
+              <input
+                type="number"
+                min={0}
+                value={form.treatmentTimeMin}
+                onChange={(e) => setForm({ ...form, treatmentTimeMin: Number(e.target.value) })}
+                className="h-10 w-28 rounded-md border border-neutral-300 px-2"
+              />
+            </label>
+          </div>
+          <label className="flex flex-col gap-1 text-xs text-neutral-500">
+            料金（税込）
+            <input
+              type="number"
+              min={0}
+              value={form.price}
+              onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
+              className="h-10 w-32 rounded-md border border-neutral-300 px-2"
+            />
+          </label>
+          <select
+            value={form.genderRestriction}
+            onChange={(e) =>
+              setForm({ ...form, genderRestriction: e.target.value as GenderRestriction })
+            }
+            className="h-10 rounded-md border border-neutral-300 px-2"
+          >
+            <option value="none">性別制限なし</option>
+            <option value="female">女性限定</option>
+            <option value="male">男性限定</option>
+          </select>
+          <button
+            type="button"
+            disabled={creating || !form.categoryId || !form.name}
+            onClick={handleCreate}
+            className="h-12 rounded-lg bg-primary-500 font-medium text-white disabled:opacity-50"
+          >
+            登録する
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
