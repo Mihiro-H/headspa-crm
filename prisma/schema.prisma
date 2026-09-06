@@ -110,15 +110,24 @@ enum Gender {
 }
 
 model CustomerStatus {
-  id            Int    @id @default(autoincrement()) @map("status_id")
-  name          String @unique @db.VarChar(50)
-  minVisitCount Int    @map("min_visit_count")
-  colorCode     String @map("color_code") @db.VarChar(7)
-  sortOrder     Int    @map("sort_order")
+  id             Int                 @id @default(autoincrement()) @map("status_id")
+  name           String              @unique @db.VarChar(50)
+  minVisitCount  Int                 @map("min_visit_count")
+  minTotalSpent  Int                 @default(0) @map("min_total_spent")
+  conditionMode  StatusConditionMode @default(or) @map("condition_mode")
+  colorCode      String              @map("color_code") @db.VarChar(7)
+  sortOrder      Int                 @map("sort_order")
 
   members Member[]
 
   @@map("customer_statuses")
+}
+
+enum StatusConditionMode {
+  or
+  and
+
+  @@map("status_condition_mode")
 }
 
 model Member {
@@ -135,6 +144,7 @@ model Member {
   lineUserId     String?  @unique @map("line_user_id") @db.VarChar(100)
   visitCount     Int      @default(0) @map("visit_count")
   totalSpent     Int      @default(0) @map("total_spent")
+  isActive       Boolean  @default(true) @map("is_active")
   emailNotificationEnabled Boolean @default(true) @map("email_notification_enabled")
   lineNotificationEnabled  Boolean @default(true) @map("line_notification_enabled")
   createdAt      DateTime @default(now()) @map("created_at")
