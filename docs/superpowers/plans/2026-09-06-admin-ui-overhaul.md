@@ -4050,7 +4050,11 @@ export default function SegmentCampaignsPage() {
             />
           </div>
 
-          {resultMessage && <p className="text-sm text-neutral-700">{resultMessage}</p>}
+          {resultMessage && (
+            <p role="status" aria-live="polite" className="text-sm text-neutral-700">
+              {resultMessage}
+            </p>
+          )}
 
           <button
             type="button"
