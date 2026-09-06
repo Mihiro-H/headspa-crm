@@ -3736,7 +3736,17 @@ export default function AdminStoresPage() {
           </div>
           <button
             type="button"
-            disabled={creating || !form.name || !form.phone}
+            disabled={
+              creating ||
+              !form.name ||
+              !form.phone ||
+              !form.weekdayOpen ||
+              !form.weekdayClose ||
+              !form.weekendOpen ||
+              !form.weekendClose ||
+              !form.luxuryLastOrderWeekday ||
+              !form.luxuryLastOrderWeekend
+            }
             onClick={handleCreate}
             className="h-12 rounded-lg bg-primary-500 font-medium text-white disabled:opacity-50"
           >
@@ -3749,6 +3759,8 @@ export default function AdminStoresPage() {
 }
 ```
 
+**⚠️ この`disabled`条件は必須。** `<input type="time">`はユーザーが空欄に消せてしまうため、営業時間6項目も`disabled`チェックに含めないと、空文字が`toTimeDate`に渡ってInvalid Dateとなり、Prisma書き込み時に例外が発生。`handleCreate`にtry/catchがないため、`setCreating(true)`のまま`creating`が戻らずボタンが恒久的に無効化されたままになる（コード品質レビューで発覚）。
+
 - [ ] **Step 2: 型チェック**
 
 Run: `npx tsc --noEmit`
@@ -3759,6 +3771,16 @@ Expected: エラーなし
 ```bash
 git add "app/admin/(dashboard)/stores/page.tsx"
 git commit -m "feat: add new-store modal to store management page
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01XpRhLMg71GDycF8WcpBjRJ"
+```
+
+（実際の実装では、上記コミットの直後にコード品質レビューで営業時間6項目の`disabled`チェック漏れが発覚し、以下のフォローアップコミットを追加した）
+
+```bash
+git add "app/admin/(dashboard)/stores/page.tsx"
+git commit -m "fix: require all store hours fields before allowing store creation (Task 18)
 
 Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01XpRhLMg71GDycF8WcpBjRJ"
