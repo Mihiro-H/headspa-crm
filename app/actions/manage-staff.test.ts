@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { listAllStaff, updateStaff } from "./manage-staff";
+import { listAllStaff, updateStaff, createStaff } from "./manage-staff";
 import { prisma } from "@/lib/db";
 
 vi.mock("@/lib/db", () => ({
   prisma: {
-    staff: { findMany: vi.fn(), update: vi.fn() },
+    staff: { findMany: vi.fn(), update: vi.fn(), create: vi.fn() },
   },
 }));
 
@@ -58,6 +58,33 @@ describe("updateStaff", () => {
     expect(prisma.staff.update).toHaveBeenCalledWith({
       where: { id: 1 },
       data: { nominationFee: 1500, isActive: false },
+    });
+  });
+});
+
+describe("createStaff", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("creates a staff member at the given store", async () => {
+    vi.mocked(prisma.staff.create).mockResolvedValue({ id: 9 } as never);
+
+    const result = await createStaff({
+      storeId: 2,
+      name: "高橋 一郎",
+      bio: "得意メニュー：アロマ",
+      nominationFee: 1200,
+    });
+
+    expect(result).toEqual({ staffId: 9 });
+    expect(prisma.staff.create).toHaveBeenCalledWith({
+      data: {
+        storeId: 2,
+        name: "高橋 一郎",
+        bio: "得意メニュー：アロマ",
+        nominationFee: 1200,
+      },
     });
   });
 });

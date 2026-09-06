@@ -41,3 +41,22 @@ export async function updateStaff(params: UpdateStaffParams): Promise<void> {
     data: { nominationFee: params.nominationFee, isActive: params.isActive },
   });
 }
+
+export interface CreateStaffParams {
+  storeId: number;
+  name: string;
+  bio: string | null;
+  nominationFee: number;
+}
+
+export async function createStaff(params: CreateStaffParams): Promise<{ staffId: number }> {
+  const staff = await prisma.staff.create({
+    data: {
+      storeId: params.storeId,
+      name: params.name,
+      bio: params.bio,
+      nominationFee: params.nominationFee,
+    },
+  });
+  return { staffId: staff.id };
+}
