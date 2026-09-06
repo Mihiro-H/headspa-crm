@@ -1,14 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { listAllStaff, updateStaff, type ManagedStaff } from "@/app/actions/manage-staff";
+import { Plus } from "lucide-react";
+import { listAllStaff, updateStaff, createStaff, type ManagedStaff } from "@/app/actions/manage-staff";
+import { listStores, type StoreListItem } from "@/app/actions/stores";
+import { Modal } from "@/components/ui/modal";
+
+const EMPTY_FORM = { storeId: null as number | null, name: "", bio: "", nominationFee: 0 };
 
 export default function AdminStaffPage() {
   const [staff, setStaff] = useState<ManagedStaff[]>([]);
+  const [stores, setStores] = useState<StoreListItem[]>([]);
   const [saving, setSaving] = useState<number | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [creating, setCreating] = useState(false);
+
+  function reload() {
+    listAllStaff().then(setStaff);
+  }
 
   useEffect(() => {
-    listAllStaff().then(setStaff);
+    reload();
+    listStores().then(setStores);
   }, []);
 
   async function handleFeeBlur(member: ManagedStaff, nominationFee: number) {
@@ -26,6 +40,16 @@ export default function AdminStaffPage() {
     setSaving(null);
   }
 
+  async function handleCreate() {
+    if (!form.storeId) return;
+    setCreating(true);
+    await createStaff({ ...form, storeId: form.storeId, bio: form.bio || null });
+    setCreating(false);
+    setForm(EMPTY_FORM);
+    setModalOpen(false);
+    reload();
+  }
+
   const grouped = staff.reduce<Record<string, ManagedStaff[]>>((acc, s) => {
     acc[s.storeName] = acc[s.storeName] ?? [];
     acc[s.storeName].push(s);
@@ -34,7 +58,17 @@ export default function AdminStaffPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-heading text-2xl text-primary-700">スタッフ管理</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="font-heading text-2xl text-primary-700">スタッフ管理</h1>
+        <button
+          type="button"
+          onClick={() => setModalOpen(true)}
+          className="flex h-10 items-center gap-1 rounded-lg bg-primary-500 px-4 text-sm font-medium text-white"
+        >
+          <Plus size={16} />
+          新規登録
+        </button>
+      </div>
 
       {Object.entries(grouped).map(([storeName, members]) => (
         <div key={storeName} className="flex flex-col gap-2">
@@ -66,11 +100,7 @@ export default function AdminStaffPage() {
                     </td>
                     <td className="p-3">
                       <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={s.isActive}
-                          onChange={() => handleToggleActive(s)}
-                        />
+                        <input type="checkbox" checked={s.isActive} onChange={() => handleToggleActive(s)} />
                         {s.isActive ? "在籍中" : "退職"}
                       </label>
                     </td>
@@ -84,6 +114,55 @@ export default function AdminStaffPage() {
           </div>
         </div>
       ))}
+
+      <Modal open={modalOpen} onOpenChange={setModalOpen} title="新規スタッフ登録">
+        <div className="flex flex-col gap-3">
+          <select
+            value={form.storeId ?? ""}
+            onChange={(e) => setForm({ ...form, storeId: e.target.value ? Number(e.target.value) : null })}
+            className="h-10 rounded-md border border-neutral-300 px-2"
+          >
+            <option value="">所属店舗を選択</option>
+            {stores.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+          <input
+            type="text"
+            placeholder="氏名"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            className="h-10 rounded-md border border-neutral-300 px-2"
+          />
+          <textarea
+            placeholder="紹介文（任意）"
+            value={form.bio}
+            onChange={(e) => setForm({ ...form, bio: e.target.value })}
+            rows={3}
+            className="rounded-md border border-neutral-300 px-2 py-2"
+          />
+          <label className="flex flex-col gap-1 text-xs text-neutral-500">
+            指名料金
+            <input
+              type="number"
+              min={0}
+              value={form.nominationFee}
+              onChange={(e) => setForm({ ...form, nominationFee: Number(e.target.value) })}
+              className="h-10 w-32 rounded-md border border-neutral-300 px-2"
+            />
+          </label>
+          <button
+            type="button"
+            disabled={creating || !form.storeId || !form.name}
+            onClick={handleCreate}
+            className="h-12 rounded-lg bg-primary-500 font-medium text-white disabled:opacity-50"
+          >
+            登録する
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
