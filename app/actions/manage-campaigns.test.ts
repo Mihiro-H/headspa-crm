@@ -4,6 +4,7 @@ import {
   createCampaign,
   updateCampaign,
   deleteCampaign,
+  republishCampaign,
 } from "./manage-campaigns";
 import { prisma } from "@/lib/db";
 
@@ -158,6 +159,23 @@ describe("deleteCampaign", () => {
     expect(prisma.campaign.update).toHaveBeenCalledWith({
       where: { id: 1 },
       data: { isPublished: false },
+    });
+  });
+});
+
+describe("republishCampaign", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("re-publishes a previously deleted campaign", async () => {
+    vi.mocked(prisma.campaign.update).mockResolvedValue({} as never);
+
+    await republishCampaign(1);
+
+    expect(prisma.campaign.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { isPublished: true },
     });
   });
 });

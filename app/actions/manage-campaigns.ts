@@ -130,3 +130,11 @@ export async function deleteCampaign(campaignId: number): Promise<void> {
     data: { isPublished: false },
   });
 }
+
+// deleteCampaignで無効化したキャンペーンを再度有効化する（deactivateCustomer/reactivateCustomerと対になる操作）。
+export async function republishCampaign(campaignId: number): Promise<void> {
+  await prisma.campaign.update({
+    where: { id: campaignId },
+    data: { isPublished: true },
+  });
+}
