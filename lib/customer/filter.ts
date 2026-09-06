@@ -5,8 +5,10 @@ export interface CustomerFilterCondition {
   storeId?: number;
 }
 
+// 無効化（退会・不正利用等）された顧客は、常にセグメント配信の対象から除外する。
 export function buildMemberWhereClause(condition: CustomerFilterCondition) {
   return {
+    isActive: true,
     ...(condition.name
       ? { name: { contains: condition.name, mode: "insensitive" as const } }
       : {}),

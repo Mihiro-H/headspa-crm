@@ -59,6 +59,7 @@ describe("previewSegmentAudience", () => {
 
     expect(prisma.member.findMany).toHaveBeenCalledWith({
       where: {
+        isActive: true,
         name: { contains: "田中", mode: "insensitive" },
         statusId: 2,
         primaryStoreId: 1,
