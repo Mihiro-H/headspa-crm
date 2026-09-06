@@ -188,6 +188,7 @@ export default function AdminCustomersPage() {
             key={s.id}
             type="button"
             onClick={() => toggleStatus(s.id)}
+            aria-pressed={statusIds.includes(s.id)}
             className="rounded-full px-3 py-1 text-xs text-white transition-opacity"
             style={{
               backgroundColor: s.colorCode,
@@ -204,7 +205,11 @@ export default function AdminCustomersPage() {
           <thead>
             <tr className="border-b border-neutral-200 text-left text-neutral-500">
               {SORT_COLUMNS.slice(0, 1).map(({ field, label }) => (
-                <th key={field} className="p-3">
+                <th
+                  key={field}
+                  className="p-3"
+                  aria-sort={sortBy === field ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
+                >
                   <button
                     type="button"
                     onClick={() => toggleSort(field)}
@@ -219,7 +224,11 @@ export default function AdminCustomersPage() {
               <th className="p-3">氏名</th>
               <th className="p-3">ステータス</th>
               {SORT_COLUMNS.slice(1).map(({ field, label }) => (
-                <th key={field} className="p-3">
+                <th
+                  key={field}
+                  className="p-3"
+                  aria-sort={sortBy === field ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
+                >
                   <button
                     type="button"
                     onClick={() => toggleSort(field)}
