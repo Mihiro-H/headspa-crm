@@ -55,6 +55,7 @@ export function NotificationBell() {
       <button
         type="button"
         onClick={handleToggle}
+        aria-label="通知"
         className="relative flex h-9 w-9 items-center justify-center rounded-full hover:bg-primary-50"
       >
         <Bell size={20} strokeWidth={1.75} />
