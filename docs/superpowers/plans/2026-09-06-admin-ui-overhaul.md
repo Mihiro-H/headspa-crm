@@ -1199,9 +1199,26 @@ export interface MemberActivity {
 export function statusQualifies(status: StatusCondition, member: MemberActivity): boolean {
   const visitOk = member.visitCount >= status.minVisitCount;
   const spentOk = member.totalSpent >= status.minTotalSpent;
-  return status.conditionMode === "and" ? visitOk && spentOk : visitOk || spentOk;
-}
 
+  if (status.conditionMode === "and") {
+    // ANDでは閾値0（未設定）の条件は member.xxx >= 0 で常に満たされるため、
+    // 実質的にもう一方の条件だけで判定される（意図した挙動なので特別扱い不要）。
+    return visitOk && spentOk;
+  }
+
+  // ORで閾値0（未設定）の条件をそのまま使うと、その条件だけで常にtrueになり
+  // もう一方の条件を無視してしまう。閾値が実際に設定されている（0より大きい）
+  // 条件のみをOR判定の対象にし、両方とも未設定なら無条件クリアの基本ステータスとして扱う。
+  const visitApplies = status.minVisitCount > 0;
+  const spentApplies = status.minTotalSpent > 0;
+  if (!visitApplies && !spentApplies) return true;
+  return (visitApplies && visitOk) || (spentApplies && spentOk);
+}
+```
+
+**⚠️ 実装時の追加修正（TDDのStep2で発覚）：** 上記の単純な`visitOk && spentOk`／`visitOk || spentOk`のままだと、OR条件で片方の閾値が`0`（未設定）の場合に「0以上」が常にtrueとなり、設定していないはずの条件で常に昇格してしまう不具合がある（Task 4で発見した`conditionMode`既定値の問題と同根）。上記の通り、OR判定では実際に閾値が設定されている（`0`より大きい）条件のみを対象にし、両方とも未設定なら無条件で該当する「基本ステータス」として扱うよう修正済みの実装を正としている。ANDモードは元のロジックのままで問題ない（閾値0の条件は「常に満たす」側に倒れるため、結果的にもう一方の条件だけで判定される）。
+
+```ts
 export async function runStatusUpdateJob(now: Date = new Date()): Promise<void> {
   await runCronJob(
     "status_update",
