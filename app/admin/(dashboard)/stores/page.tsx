@@ -188,7 +188,17 @@ export default function AdminStoresPage() {
           </div>
           <button
             type="button"
-            disabled={creating || !form.name || !form.phone}
+            disabled={
+              creating ||
+              !form.name ||
+              !form.phone ||
+              !form.weekdayOpen ||
+              !form.weekdayClose ||
+              !form.weekendOpen ||
+              !form.weekendClose ||
+              !form.luxuryLastOrderWeekday ||
+              !form.luxuryLastOrderWeekend
+            }
             onClick={handleCreate}
             className="h-12 rounded-lg bg-primary-500 font-medium text-white disabled:opacity-50"
           >
