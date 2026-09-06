@@ -840,7 +840,7 @@ export async function reactivateCustomer(memberId: number): Promise<void> {
 - [ ] **Step 4: テストを実行して成功を確認する**
 
 Run: `npx vitest run app/actions/manage-customers.test.ts`
-Expected: PASS（4件）
+Expected: PASS（5件）
 
 - [ ] **Step 5: Commit**
 
