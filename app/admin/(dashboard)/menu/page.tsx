@@ -48,7 +48,12 @@ export default function AdminMenuPage() {
   async function handleCreate() {
     if (!form.categoryId) return;
     setCreating(true);
-    await createCourse({ ...form, categoryId: form.categoryId });
+    const coursesInCategory = courses.filter((c) => c.categoryId === form.categoryId);
+    const nextSortOrder =
+      coursesInCategory.length > 0
+        ? Math.max(...coursesInCategory.map((c) => c.sortOrder)) + 1
+        : 0;
+    await createCourse({ ...form, categoryId: form.categoryId, sortOrder: nextSortOrder });
     setCreating(false);
     setForm(EMPTY_FORM);
     setModalOpen(false);
