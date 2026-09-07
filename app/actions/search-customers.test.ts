@@ -4,13 +4,14 @@ import { prisma } from "@/lib/db";
 
 vi.mock("@/lib/db", () => ({
   prisma: {
-    member: { findMany: vi.fn() },
+    member: { findMany: vi.fn(), count: vi.fn() },
   },
 }));
 
 describe("searchCustomers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(prisma.member.count).mockResolvedValue(0);
   });
 
   it("maps members to customer list items with status, store, and contact info", async () => {
@@ -28,25 +29,29 @@ describe("searchCustomers", () => {
         reservations: [{ reservationDate: new Date("2026-08-20T00:00:00Z") }],
       },
     ] as never);
+    vi.mocked(prisma.member.count).mockResolvedValue(1);
 
     const result = await searchCustomers({});
 
-    expect(result).toEqual([
-      {
-        id: 1,
-        name: "佐藤 太郎",
-        phone: "090-1111-2222",
-        statusName: "レギュラー",
-        statusColor: "#8AAB78",
-        visitCount: 5,
-        totalSpent: 40000,
-        lastVisitDate: "2026-08-20",
-        primaryStoreId: 2,
-        primaryStoreName: "フォレスパ 渋谷店",
-        createdAt: "2026-01-15",
-        isActive: true,
-      },
-    ]);
+    expect(result).toEqual({
+      items: [
+        {
+          id: 1,
+          name: "佐藤 太郎",
+          phone: "090-1111-2222",
+          statusName: "レギュラー",
+          statusColor: "#8AAB78",
+          visitCount: 5,
+          totalSpent: 40000,
+          lastVisitDate: "2026-08-20",
+          primaryStoreId: 2,
+          primaryStoreName: "フォレスパ 渋谷店",
+          createdAt: "2026-01-15",
+          isActive: true,
+        },
+      ],
+      totalCount: 1,
+    });
   });
 
   it("returns null lastVisitDate and primaryStore fields when absent", async () => {
@@ -67,9 +72,9 @@ describe("searchCustomers", () => {
 
     const result = await searchCustomers({});
 
-    expect(result[0].lastVisitDate).toBeNull();
-    expect(result[0].primaryStoreId).toBeNull();
-    expect(result[0].primaryStoreName).toBeNull();
+    expect(result.items[0].lastVisitDate).toBeNull();
+    expect(result.items[0].primaryStoreId).toBeNull();
+    expect(result.items[0].primaryStoreName).toBeNull();
   });
 
   it("filters to active customers by default, and includes inactive when requested", async () => {
@@ -114,36 +119,52 @@ describe("searchCustomers", () => {
     );
   });
 
-  it("sorts by last visit date in memory, placing customers with no visits last", async () => {
-    vi.mocked(prisma.member.findMany).mockResolvedValue([
-      {
-        id: 1,
-        name: "来店なし",
-        phone: "090-0000-0000",
-        visitCount: 0,
-        totalSpent: 0,
-        isActive: true,
-        createdAt: new Date("2026-01-01T00:00:00Z"),
-        status: { name: "ビジター", colorCode: "#A9A08D" },
-        primaryStore: null,
-        reservations: [],
-      },
-      {
-        id: 2,
-        name: "直近来店",
-        phone: "090-0000-0001",
-        visitCount: 3,
-        totalSpent: 10000,
-        isActive: true,
-        createdAt: new Date("2026-01-02T00:00:00Z"),
-        status: { name: "レギュラー", colorCode: "#8AAB78" },
-        primaryStore: null,
-        reservations: [{ reservationDate: new Date("2026-08-01T00:00:00Z") }],
-      },
-    ] as never);
+  it("paginates via skip/take for plain-column sorts, and returns totalCount from a separate count query", async () => {
+    vi.mocked(prisma.member.findMany).mockResolvedValue([] as never);
+    vi.mocked(prisma.member.count).mockResolvedValue(45);
 
-    const result = await searchCustomers({ sortBy: "lastVisitDate", sortDirection: "desc" });
+    const result = await searchCustomers({ page: 2 });
 
-    expect(result.map((c) => c.id)).toEqual([2, 1]);
+    expect(prisma.member.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 20, take: 20 }),
+    );
+    expect(result.totalCount).toBe(45);
+  });
+
+  it("sorts by last visit date in memory, places customers with no visits last, and reports totalCount", () => {
+    return (async () => {
+      vi.mocked(prisma.member.findMany).mockResolvedValue([
+        {
+          id: 1,
+          name: "来店なし",
+          phone: "090-0000-0000",
+          visitCount: 0,
+          totalSpent: 0,
+          isActive: true,
+          createdAt: new Date("2026-01-01T00:00:00Z"),
+          status: { name: "ビジター", colorCode: "#A9A08D" },
+          primaryStore: null,
+          reservations: [],
+        },
+        {
+          id: 2,
+          name: "直近来店",
+          phone: "090-0000-0001",
+          visitCount: 3,
+          totalSpent: 10000,
+          isActive: true,
+          createdAt: new Date("2026-01-02T00:00:00Z"),
+          status: { name: "レギュラー", colorCode: "#8AAB78" },
+          primaryStore: null,
+          reservations: [{ reservationDate: new Date("2026-08-01T00:00:00Z") }],
+        },
+      ] as never);
+
+      const result = await searchCustomers({ sortBy: "lastVisitDate", sortDirection: "desc" });
+
+      expect(result.items.map((c) => c.id)).toEqual([2, 1]);
+      expect(result.totalCount).toBe(2);
+      expect(prisma.member.count).not.toHaveBeenCalled();
+    })();
   });
 });

@@ -41,7 +41,7 @@ export default function AdminNewPhoneReservationPage() {
       setCustomers([]);
       return;
     }
-    searchCustomers({ name: memberQuery }).then(setCustomers);
+    searchCustomers({ name: memberQuery }).then((result) => setCustomers(result.items));
   }, [memberQuery]);
 
   useEffect(() => {

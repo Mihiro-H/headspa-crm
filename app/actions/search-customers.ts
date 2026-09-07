@@ -2,6 +2,8 @@
 
 import { prisma } from "@/lib/db";
 
+export const CUSTOMER_PAGE_SIZE = 20;
+
 export type CustomerSortField = "id" | "visitCount" | "totalSpent" | "lastVisitDate";
 export type SortDirection = "asc" | "desc";
 
@@ -28,6 +30,12 @@ export interface CustomerSearchParams {
   includeInactive?: boolean;
   sortBy?: CustomerSortField;
   sortDirection?: SortDirection;
+  page?: number;
+}
+
+export interface CustomerSearchResult {
+  items: CustomerListItem[];
+  totalCount: number;
 }
 
 // Prismaのorderby型は動的キー（[sortBy]: ...）だと型が合わないため、
@@ -48,35 +56,19 @@ function buildMemberOrderBy(sortBy: CustomerSortField, sortDirection: SortDirect
   }
 }
 
-export async function searchCustomers(
-  params: CustomerSearchParams,
-): Promise<CustomerListItem[]> {
-  const sortBy = params.sortBy ?? "id";
-  const sortDirection = params.sortDirection ?? "desc";
-
-  const members = await prisma.member.findMany({
-    where: {
-      ...(params.name ? { name: { contains: params.name, mode: "insensitive" } } : {}),
-      ...(params.phone ? { phone: { contains: params.phone } } : {}),
-      ...(params.statusIds && params.statusIds.length > 0
-        ? { statusId: { in: params.statusIds } }
-        : {}),
-      ...(params.storeId ? { primaryStoreId: params.storeId } : {}),
-      ...(params.includeInactive ? {} : { isActive: true }),
-    },
-    include: {
-      status: true,
-      primaryStore: true,
-      reservations: {
-        where: { status: "completed" },
-        orderBy: { reservationDate: "desc" },
-        take: 1,
-      },
-    },
-    orderBy: buildMemberOrderBy(sortBy, sortDirection),
-  });
-
-  const mapped: CustomerListItem[] = members.map((m) => ({
+function mapMember(m: {
+  id: number;
+  name: string;
+  phone: string;
+  visitCount: number;
+  totalSpent: number;
+  isActive: boolean;
+  createdAt: Date;
+  status: { name: string; colorCode: string };
+  primaryStore: { id: number; name: string } | null;
+  reservations: { reservationDate: Date }[];
+}): CustomerListItem {
+  return {
     id: m.id,
     name: m.name,
     phone: m.phone,
@@ -89,9 +81,42 @@ export async function searchCustomers(
     primaryStoreName: m.primaryStore?.name ?? null,
     createdAt: m.createdAt.toISOString().slice(0, 10),
     isActive: m.isActive,
-  }));
+  };
+}
 
+export async function searchCustomers(
+  params: CustomerSearchParams,
+): Promise<CustomerSearchResult> {
+  const sortBy = params.sortBy ?? "id";
+  const sortDirection = params.sortDirection ?? "desc";
+  const page = params.page ?? 1;
+
+  const where = {
+    ...(params.name ? { name: { contains: params.name, mode: "insensitive" as const } } : {}),
+    ...(params.phone ? { phone: { contains: params.phone } } : {}),
+    ...(params.statusIds && params.statusIds.length > 0
+      ? { statusId: { in: params.statusIds } }
+      : {}),
+    ...(params.storeId ? { primaryStoreId: params.storeId } : {}),
+    ...(params.includeInactive ? {} : { isActive: true }),
+  };
+
+  const include = {
+    status: true,
+    primaryStore: true,
+    reservations: {
+      where: { status: "completed" as const },
+      orderBy: { reservationDate: "desc" as const },
+      take: 1,
+    },
+  };
+
+  // lastVisitDateはDB上でソートできない派生値のため、この場合のみ全件取得して
+  // メモリ上でソート・ページ切り出しを行う。それ以外は通常通りDB側でページングする。
   if (sortBy === "lastVisitDate") {
+    const members = await prisma.member.findMany({ where, include });
+    const mapped = members.map(mapMember);
+
     mapped.sort((a, b) => {
       if (a.lastVisitDate === b.lastVisitDate) return 0;
       if (a.lastVisitDate === null) return 1;
@@ -100,7 +125,22 @@ export async function searchCustomers(
         ? a.lastVisitDate.localeCompare(b.lastVisitDate)
         : b.lastVisitDate.localeCompare(a.lastVisitDate);
     });
+
+    const totalCount = mapped.length;
+    const start = (page - 1) * CUSTOMER_PAGE_SIZE;
+    return { items: mapped.slice(start, start + CUSTOMER_PAGE_SIZE), totalCount };
   }
 
-  return mapped;
+  const [members, totalCount] = await Promise.all([
+    prisma.member.findMany({
+      where,
+      include,
+      orderBy: buildMemberOrderBy(sortBy, sortDirection),
+      skip: (page - 1) * CUSTOMER_PAGE_SIZE,
+      take: CUSTOMER_PAGE_SIZE,
+    }),
+    prisma.member.count({ where }),
+  ]);
+
+  return { items: members.map(mapMember), totalCount };
 }
