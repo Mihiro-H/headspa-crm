@@ -135,18 +135,30 @@ export interface SegmentCampaignListItem {
   sentAt: string | null;
 }
 
-export async function listSegmentCampaigns(): Promise<SegmentCampaignListItem[]> {
+export const SEGMENT_CAMPAIGN_PAGE_SIZE = 20;
+
+export interface ListSegmentCampaignsResult {
+  items: SegmentCampaignListItem[];
+  totalCount: number;
+}
+
+export async function listSegmentCampaigns(page = 1): Promise<ListSegmentCampaignsResult> {
   const session = await auth();
   if (!session?.user || !ADMIN_ROLES.has(session.user.role)) {
     throw new Error("unauthorized");
   }
 
-  const campaigns = await prisma.segmentCampaign.findMany({
-    include: { template: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const [campaigns, totalCount] = await Promise.all([
+    prisma.segmentCampaign.findMany({
+      include: { template: true },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * SEGMENT_CAMPAIGN_PAGE_SIZE,
+      take: SEGMENT_CAMPAIGN_PAGE_SIZE,
+    }),
+    prisma.segmentCampaign.count(),
+  ]);
 
-  return campaigns.map((c) => ({
+  const items = campaigns.map((c) => ({
     id: c.id,
     name: c.name,
     channelMode: c.channelMode,
@@ -155,4 +167,6 @@ export async function listSegmentCampaigns(): Promise<SegmentCampaignListItem[]>
     scheduledAt: c.scheduledAt ? c.scheduledAt.toISOString() : null,
     sentAt: c.sentAt ? c.sentAt.toISOString() : null,
   }));
+
+  return { items, totalCount };
 }

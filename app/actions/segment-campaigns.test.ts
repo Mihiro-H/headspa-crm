@@ -8,7 +8,7 @@ import { sendLineMessage } from "@/lib/delivery/send-line";
 vi.mock("@/lib/db", () => ({
   prisma: {
     member: { findMany: vi.fn() },
-    segmentCampaign: { create: vi.fn(), update: vi.fn(), findMany: vi.fn() },
+    segmentCampaign: { create: vi.fn(), update: vi.fn(), findMany: vi.fn(), count: vi.fn() },
     deliveryTemplate: { findUniqueOrThrow: vi.fn() },
     emailLineLog: { create: vi.fn() },
   },
@@ -188,6 +188,7 @@ describe("createSegmentCampaign", () => {
 describe("listSegmentCampaigns", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(prisma.segmentCampaign.count).mockResolvedValue(0);
   });
 
   it("rejects a non-admin session", async () => {
@@ -210,19 +211,39 @@ describe("listSegmentCampaigns", () => {
         template: { name: "夏の特別クーポン" },
       },
     ] as never);
+    vi.mocked(prisma.segmentCampaign.count).mockResolvedValue(1);
 
     const result = await listSegmentCampaigns();
 
-    expect(result).toEqual([
-      {
-        id: 1,
-        name: "夏季キャンペーン",
-        channelMode: "auto",
-        templateName: "夏の特別クーポン",
-        targetCount: 50,
-        scheduledAt: null,
-        sentAt: "2026-09-01T09:00:00.000Z",
-      },
-    ]);
+    expect(result).toEqual({
+      items: [
+        {
+          id: 1,
+          name: "夏季キャンペーン",
+          channelMode: "auto",
+          templateName: "夏の特別クーポン",
+          targetCount: 50,
+          scheduledAt: null,
+          sentAt: "2026-09-01T09:00:00.000Z",
+        },
+      ],
+      totalCount: 1,
+    });
+    expect(prisma.segmentCampaign.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 0, take: 20 }),
+    );
+  });
+
+  it("applies skip/take based on the requested page", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "9", role: "hq" } } as never);
+    vi.mocked(prisma.segmentCampaign.findMany).mockResolvedValue([] as never);
+    vi.mocked(prisma.segmentCampaign.count).mockResolvedValue(25);
+
+    const result = await listSegmentCampaigns(2);
+
+    expect(prisma.segmentCampaign.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 20, take: 20 }),
+    );
+    expect(result.totalCount).toBe(25);
   });
 });
