@@ -35,7 +35,7 @@ model Store {
   storeHolidays  StoreHoliday[]
   admins         Admin[]
   memberStores   MemberStore[]
-  campaigns      Campaign[]
+  campaignStoreTargets CampaignStoreTarget[]
   reservations   Reservation[]
   notifications  Notification[]
 
@@ -235,7 +235,6 @@ enum DiscountType {
 
 model Campaign {
   id            Int          @id @default(autoincrement()) @map("campaign_id")
-  targetStoreId Int?         @map("target_store_id")
   name          String       @db.VarChar(100)
   discountType  DiscountType @map("discount_type")
   discountValue Int          @map("discount_value")
@@ -244,12 +243,23 @@ model Campaign {
   priority      Int          @default(0)
   isPublished   Boolean      @default(true) @map("is_published")
 
-  targetStore      Store?                   @relation(fields: [targetStoreId], references: [id])
+  storeTargets     CampaignStoreTarget[]
   courseTargets    CampaignCourseTarget[]
   categoryTargets  CampaignCategoryTarget[]
   reservationItems ReservationItem[]
 
   @@map("campaigns")
+}
+
+model CampaignStoreTarget {
+  id         Int @id @default(autoincrement())
+  campaignId Int @map("campaign_id")
+  storeId    Int @map("store_id")
+
+  campaign Campaign @relation(fields: [campaignId], references: [id])
+  store    Store    @relation(fields: [storeId], references: [id])
+
+  @@map("campaign_store_targets")
 }
 
 model CampaignCourseTarget {
