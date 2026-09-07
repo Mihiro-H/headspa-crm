@@ -34,7 +34,6 @@ export default function AdminCustomerDetailPage({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
-        <h1 className="font-heading text-2xl text-primary-700">{customer.name}</h1>
         <span
           className="rounded-full px-2 py-1 text-xs text-white"
           style={{ backgroundColor: customer.statusColor }}

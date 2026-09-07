@@ -22,7 +22,6 @@ export default function CronLogsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-heading text-2xl text-primary-700">Cronジョブ実行ログ</h1>
       <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm">
         <table className="w-full text-sm">
           <thead>

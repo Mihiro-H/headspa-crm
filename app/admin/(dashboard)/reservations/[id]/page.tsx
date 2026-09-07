@@ -67,7 +67,6 @@ export default function AdminReservationDetailPage({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
-        <h1 className="font-heading text-2xl text-primary-700">予約詳細 #{reservation.id}</h1>
         <span className="rounded-full bg-primary-50 px-2 py-1 text-xs text-primary-700">
           {statusLabel(reservation.status)}
         </span>

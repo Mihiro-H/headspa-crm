@@ -95,8 +95,6 @@ export default function AdminNewPhoneReservationPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-heading text-2xl text-primary-700">電話予約の新規登録</h1>
-
       <div className="flex flex-col gap-2">
         <label className="text-sm text-neutral-600">会員を検索</label>
         <input

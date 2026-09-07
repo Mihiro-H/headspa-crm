@@ -54,7 +54,6 @@ export default function AdminCalendarPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center gap-4">
-        <h1 className="font-heading text-2xl text-primary-700">予約カレンダー</h1>
         <select
           value={storeId ?? ""}
           onChange={(e) => setStoreId(e.target.value ? Number(e.target.value) : null)}

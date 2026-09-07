@@ -137,7 +137,6 @@ export default function AutoDeliveryPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-heading text-2xl text-primary-700">自動配信設定</h1>
       <p className="text-sm text-neutral-500">
         実際の送信はCronジョブ（A-13）による定期実行が必要です。ここでは設定の保存のみ行います。
       </p>

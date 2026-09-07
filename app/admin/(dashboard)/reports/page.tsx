@@ -94,8 +94,6 @@ export default function SalesReportPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-heading text-2xl text-primary-700">売上・月報レポート</h1>
-
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 bg-neutral-0 p-4">
         <div className="flex flex-col gap-1">
           <label className="text-xs text-neutral-500">開始日</label>

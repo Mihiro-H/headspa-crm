@@ -34,7 +34,6 @@ export default function AdminCustomerStatusesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-heading text-2xl text-primary-700">顧客ステータス設定</h1>
       <p className="text-sm text-neutral-500">
         4店舗共通の設定です。来店回数・利用金額は4店舗合算でカウントされます。
       </p>
