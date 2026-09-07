@@ -43,10 +43,10 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
       <aside className="w-60 shrink-0 border-r border-neutral-200 bg-neutral-0 p-4">
         <h1>
           <Image
-            src="/logo/foresupa_logo_transparent.png"
+            src="/logo/foresupa_logo_tight.png"
             alt="フォレスパ"
-            width={204}
-            height={72}
+            width={1206}
+            height={600}
             className="h-auto w-40"
             priority
           />
