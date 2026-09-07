@@ -10,6 +10,7 @@ vi.mock("@/lib/db", () => ({
       findUnique: vi.fn(),
       update: vi.fn(),
     },
+    memberStore: { upsert: vi.fn() },
   },
 }));
 
@@ -30,6 +31,7 @@ describe("confirmReservation", () => {
       reservationDate: new Date("2026-09-20T00:00:00.000Z"),
       startTime: new Date("1970-01-01T11:00:00.000Z"),
     } as never);
+    vi.mocked(prisma.memberStore.upsert).mockResolvedValue({} as never);
   });
 
   it("confirms using the authenticated member's id from the session, not a client-supplied one", async () => {

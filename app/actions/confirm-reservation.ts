@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { isTempHoldExpired } from "@/lib/reservation/temp-hold";
 import { createNotification } from "@/lib/notifications/create-notification";
+import { addUsedStore } from "@/lib/customer/add-used-store";
 import { minutesToLabel, dbTimeToMinutes } from "@/lib/reservation/time";
 
 export interface ConfirmReservationParams {
@@ -51,6 +52,8 @@ export async function confirmReservation(
     message: `新規WEB予約：${updated.reservationDate.toISOString().slice(0, 10)} ${minutesToLabel(dbTimeToMinutes(updated.startTime))}〜`,
     reservationId: updated.id,
   });
+
+  await addUsedStore(memberId, updated.storeId);
 
   return { status: "confirmed" };
 }

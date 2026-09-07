@@ -6,6 +6,7 @@ import { isSlotFree } from "@/lib/reservation/slot-conflict";
 import { calculateReservationTotal } from "@/lib/reservation/total-price";
 import { calculateCancellationDeadline } from "@/lib/reservation/cancellation-deadline";
 import { resolveCourseCampaigns } from "./course-campaigns";
+import { addUsedStore } from "@/lib/customer/add-used-store";
 
 export interface CreatePhoneReservationParams {
   memberId: number;
@@ -112,6 +113,8 @@ export async function createPhoneReservation(
       },
     },
   });
+
+  await addUsedStore(params.memberId, params.storeId);
 
   return { status: "created", reservationId: reservation.id };
 }

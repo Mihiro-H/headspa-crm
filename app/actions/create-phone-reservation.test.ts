@@ -8,6 +8,7 @@ vi.mock("@/lib/db", () => ({
     course: { findUniqueOrThrow: vi.fn() },
     option: { findMany: vi.fn() },
     staff: { findUniqueOrThrow: vi.fn() },
+    memberStore: { upsert: vi.fn() },
   },
 }));
 
