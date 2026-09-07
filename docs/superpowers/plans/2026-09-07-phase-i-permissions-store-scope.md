@@ -542,8 +542,10 @@ export function resolveAccessDecision(
   role: string | undefined,
   hiddenPageKeys: string[] = [],
 ): AccessDecision {
-  const isAdminLoginPage = pathname.startsWith("/admin/login");
-  const isAdminArea = pathname.startsWith("/admin") && !isAdminLoginPage;
+  // /admin/accept-inviteの例外はPhase Hで追加済み（アカウント招待の受諾ページを未認証で許可するため）。
+  const isPublicAdminPage =
+    pathname.startsWith("/admin/login") || pathname.startsWith("/admin/accept-invite");
+  const isAdminArea = pathname.startsWith("/admin") && !isPublicAdminPage;
   const isMemberArea = pathname.startsWith("/mypage");
 
   if (isAdminArea && !(role && ADMIN_ROLES.has(role))) {
@@ -570,7 +572,7 @@ export function resolveAccessDecision(
 - [ ] **Step 4: テストを実行して成功を確認する**
 
 Run: `npx vitest run lib/auth/access-control.test.ts`
-Expected: PASS（12件）
+Expected: PASS（13件。Phase Hで`/admin/accept-invite`用のテストが1件追加済みのため、元の7件＋Phase Hの1件＋本Taskの5件）
 
 - [ ] **Step 5: `middleware.ts`から`hiddenPageKeys`を渡す**
 
