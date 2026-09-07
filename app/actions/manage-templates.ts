@@ -77,3 +77,36 @@ export async function updateTemplate(params: UpdateTemplateParams): Promise<void
     data: { name: params.name, subject: params.subject, bodyText: params.bodyText },
   });
 }
+
+export const TEMPLATE_PAGE_SIZE = 20;
+
+export interface ListTemplatesPageResult {
+  items: TemplateListItem[];
+  totalCount: number;
+}
+
+export async function listTemplatesPage(page = 1): Promise<ListTemplatesPageResult> {
+  const session = await auth();
+  if (!session?.user || !ADMIN_ROLES.has(session.user.role)) {
+    throw new Error("unauthorized");
+  }
+
+  const [templates, totalCount] = await Promise.all([
+    prisma.deliveryTemplate.findMany({
+      orderBy: { id: "desc" },
+      skip: (page - 1) * TEMPLATE_PAGE_SIZE,
+      take: TEMPLATE_PAGE_SIZE,
+    }),
+    prisma.deliveryTemplate.count(),
+  ]);
+
+  const items = templates.map((t) => ({
+    id: t.id,
+    type: t.type,
+    name: t.name,
+    subject: t.subject,
+    bodyText: t.bodyText,
+  }));
+
+  return { items, totalCount };
+}
