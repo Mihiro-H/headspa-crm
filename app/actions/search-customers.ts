@@ -16,8 +16,8 @@ export interface CustomerListItem {
   visitCount: number;
   totalSpent: number;
   lastVisitDate: string | null;
-  primaryStoreId: number | null;
-  primaryStoreName: string | null;
+  storeIds: number[];
+  storeNames: string[];
   createdAt: string;
   isActive: boolean;
 }
@@ -26,7 +26,7 @@ export interface CustomerSearchParams {
   name?: string;
   phone?: string;
   statusIds?: number[];
-  storeId?: number;
+  storeIds?: number[];
   includeInactive?: boolean;
   sortBy?: CustomerSortField;
   sortDirection?: SortDirection;
@@ -65,7 +65,7 @@ function mapMember(m: {
   isActive: boolean;
   createdAt: Date;
   status: { name: string; colorCode: string };
-  primaryStore: { id: number; name: string } | null;
+  usedStores: { store: { id: number; name: string } }[];
   reservations: { reservationDate: Date }[];
 }): CustomerListItem {
   return {
@@ -77,8 +77,8 @@ function mapMember(m: {
     visitCount: m.visitCount,
     totalSpent: m.totalSpent,
     lastVisitDate: m.reservations[0]?.reservationDate.toISOString().slice(0, 10) ?? null,
-    primaryStoreId: m.primaryStore?.id ?? null,
-    primaryStoreName: m.primaryStore?.name ?? null,
+    storeIds: m.usedStores.map((u) => u.store.id),
+    storeNames: m.usedStores.map((u) => u.store.name),
     createdAt: m.createdAt.toISOString().slice(0, 10),
     isActive: m.isActive,
   };
@@ -97,13 +97,15 @@ export async function searchCustomers(
     ...(params.statusIds && params.statusIds.length > 0
       ? { statusId: { in: params.statusIds } }
       : {}),
-    ...(params.storeId ? { primaryStoreId: params.storeId } : {}),
+    ...(params.storeIds && params.storeIds.length > 0
+      ? { usedStores: { some: { storeId: { in: params.storeIds } } } }
+      : {}),
     ...(params.includeInactive ? {} : { isActive: true }),
   };
 
   const include = {
     status: true,
-    primaryStore: true,
+    usedStores: { include: { store: true } },
     reservations: {
       where: { status: "completed" as const },
       orderBy: { reservationDate: "desc" as const },
