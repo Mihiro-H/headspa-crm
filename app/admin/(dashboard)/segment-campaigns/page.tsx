@@ -16,6 +16,7 @@ import { listTemplates, type TemplateListItem } from "@/app/actions/manage-templ
 import { listCustomerStatuses, type CustomerStatusItem } from "@/app/actions/customer-statuses";
 import { listStores, type StoreListItem } from "@/app/actions/stores";
 import { Modal } from "@/components/ui/modal";
+import { Pagination } from "@/components/ui/pagination";
 
 const CHANNEL_LABEL: Record<SegmentChannelMode, string> = {
   email: "メール",
@@ -23,11 +24,15 @@ const CHANNEL_LABEL: Record<SegmentChannelMode, string> = {
   auto: "両方（自動振り分け）",
 };
 
+const PAGE_SIZE = 20;
+
 export default function SegmentCampaignsPage() {
   const [statuses, setStatuses] = useState<CustomerStatusItem[]>([]);
   const [stores, setStores] = useState<StoreListItem[]>([]);
   const [templates, setTemplates] = useState<TemplateListItem[]>([]);
   const [history, setHistory] = useState<SegmentCampaignListItem[]>([]);
+  const [historyTotalCount, setHistoryTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [name, setName] = useState("");
@@ -43,15 +48,22 @@ export default function SegmentCampaignsPage() {
   const [resultMessage, setResultMessage] = useState<string | null>(null);
 
   function refreshHistory() {
-    listSegmentCampaigns().then(setHistory);
+    listSegmentCampaigns(page).then((result) => {
+      setHistory(result.items);
+      setHistoryTotalCount(result.totalCount);
+    });
   }
 
   useEffect(() => {
     listCustomerStatuses().then(setStatuses);
     listStores().then(setStores);
     listTemplates().then((all) => setTemplates(all.filter((t) => t.type === "segment")));
-    refreshHistory();
   }, []);
+
+  useEffect(() => {
+    refreshHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
   async function handlePreview() {
     setPreviewing(true);
@@ -91,7 +103,13 @@ export default function SegmentCampaignsPage() {
       );
       setModalOpen(false);
     }
-    refreshHistory();
+    // 新規配信は履歴の先頭（1ページ目）に表示されるため、1ページ目以外を見ていた場合は
+    // 1ページ目に戻す。既に1ページ目なら useEffect の再発火が起きないため直接再取得する。
+    if (page === 1) {
+      refreshHistory();
+    } else {
+      setPage(1);
+    }
   }
 
   function openModal() {
@@ -107,10 +125,11 @@ export default function SegmentCampaignsPage() {
     setModalOpen(true);
   }
 
+  const totalPages = Math.max(1, Math.ceil(historyTotalCount / PAGE_SIZE));
+
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="font-heading text-2xl text-primary-700">メール／LINE配信管理</h1>
+      <div className="flex items-center justify-end">
         <button
           type="button"
           onClick={openModal}
@@ -123,10 +142,10 @@ export default function SegmentCampaignsPage() {
 
       <div className="flex flex-col gap-2">
         <h2 className="text-sm font-medium text-neutral-600">配信履歴</h2>
-        <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm">
+        <div className="max-h-[60vh] overflow-y-auto overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-neutral-200 text-left text-neutral-500">
+              <tr className="border-b border-neutral-200 bg-neutral-0 text-left text-neutral-500 sticky top-0 z-10">
                 <th className="p-3">配信名</th>
                 <th className="p-3">チャネル</th>
                 <th className="p-3">テンプレート</th>
@@ -152,6 +171,8 @@ export default function SegmentCampaignsPage() {
             <p className="p-6 text-center text-sm text-neutral-500">配信履歴がありません。</p>
           )}
         </div>
+        <p className="text-center text-xs text-neutral-500">{historyTotalCount}件中 {history.length}件を表示</p>
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
       </div>
 
       <Modal open={modalOpen} onOpenChange={setModalOpen} title="配信設定">
