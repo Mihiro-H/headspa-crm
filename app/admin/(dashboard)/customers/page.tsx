@@ -18,10 +18,13 @@ import {
 import { listCustomerStatuses, type CustomerStatusItem } from "@/app/actions/customer-statuses";
 import { listStores, type StoreListItem } from "@/app/actions/stores";
 import { Modal } from "@/components/ui/modal";
+import { Pagination } from "@/components/ui/pagination";
 
 function formatYen(amount: number): string {
   return `¥${amount.toLocaleString("ja-JP")}`;
 }
+
+const PAGE_SIZE = 20;
 
 const SORT_COLUMNS: { field: CustomerSortField; label: string }[] = [
   { field: "id", label: "会員ID" },
@@ -46,8 +49,10 @@ export default function AdminCustomersPage() {
   const [includeInactive, setIncludeInactive] = useState(false);
   const [sortBy, setSortBy] = useState<CustomerSortField>("id");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [page, setPage] = useState(1);
 
   const [customers, setCustomers] = useState<CustomerListItem[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [statuses, setStatuses] = useState<CustomerStatusItem[]>([]);
   const [stores, setStores] = useState<StoreListItem[]>([]);
 
@@ -72,13 +77,17 @@ export default function AdminCustomersPage() {
       includeInactive,
       sortBy,
       sortDirection,
-    }).then(setCustomers);
+      page,
+    }).then((result) => {
+      setCustomers(result.items);
+      setTotalCount(result.totalCount);
+    });
   }
 
   useEffect(() => {
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, phone, statusIds, includeInactive, sortBy, sortDirection]);
+  }, [name, phone, statusIds, includeInactive, sortBy, sortDirection, page]);
 
   useEffect(() => {
     listCustomerStatuses().then(setStatuses);
@@ -86,12 +95,14 @@ export default function AdminCustomersPage() {
   }, []);
 
   function toggleStatus(statusId: number) {
+    setPage(1);
     setStatusIds((prev) =>
       prev.includes(statusId) ? prev.filter((id) => id !== statusId) : [...prev, statusId],
     );
   }
 
   function toggleSort(field: CustomerSortField) {
+    setPage(1);
     if (sortBy === field) {
       setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
@@ -111,7 +122,16 @@ export default function AdminCustomersPage() {
     }
     setCreateForm(EMPTY_CREATE_FORM);
     setCreateOpen(false);
-    reload();
+    // 新規顧客は既定の並び順（id降順）の先頭に現れる。ページ・並び順が既に既定状態でなければ
+    // 既定に戻すことで新規顧客が確実に見える位置に表示されるようにする。
+    // 既に既定状態ならuseEffectが再発火しないため直接reload()する。
+    if (sortBy === "id" && sortDirection === "desc" && page === 1) {
+      reload();
+    } else {
+      setSortBy("id");
+      setSortDirection("desc");
+      setPage(1);
+    }
   }
 
   function startEdit(customer: CustomerListItem) {
@@ -143,10 +163,11 @@ export default function AdminCustomersPage() {
     reload();
   }
 
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="font-heading text-2xl text-primary-700">顧客管理</h1>
+      <div className="flex items-center justify-end">
         <button
           type="button"
           onClick={() => setCreateOpen(true)}
@@ -162,21 +183,30 @@ export default function AdminCustomersPage() {
           type="text"
           placeholder="氏名で検索"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => {
+            setPage(1);
+            setName(e.target.value);
+          }}
           className="h-10 rounded-md border border-neutral-300 px-3 text-sm"
         />
         <input
           type="text"
           placeholder="電話番号で検索"
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
+          onChange={(e) => {
+            setPage(1);
+            setPhone(e.target.value);
+          }}
           className="h-10 rounded-md border border-neutral-300 px-3 text-sm"
         />
         <label className="flex items-center gap-2 text-sm text-neutral-600">
           <input
             type="checkbox"
             checked={includeInactive}
-            onChange={(e) => setIncludeInactive(e.target.checked)}
+            onChange={(e) => {
+              setPage(1);
+              setIncludeInactive(e.target.checked);
+            }}
           />
           無効な顧客も表示
         </label>
@@ -200,10 +230,10 @@ export default function AdminCustomersPage() {
         ))}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm">
+      <div className="max-h-[60vh] overflow-y-auto overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-neutral-200 text-left text-neutral-500">
+            <tr className="border-b border-neutral-200 bg-neutral-0 text-left text-neutral-500 sticky top-0 z-10">
               {SORT_COLUMNS.slice(0, 1).map(({ field, label }) => (
                 <th
                   key={field}
@@ -307,6 +337,9 @@ export default function AdminCustomersPage() {
           <p className="p-6 text-center text-sm text-neutral-500">該当する顧客がいません。</p>
         )}
       </div>
+
+      <p className="text-center text-xs text-neutral-500">{totalCount}件中 {customers.length}件を表示</p>
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
       <Modal open={createOpen} onOpenChange={setCreateOpen} title="新規顧客登録">
         <div className="flex flex-col gap-3">
