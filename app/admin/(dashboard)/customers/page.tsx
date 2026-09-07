@@ -12,6 +12,7 @@ import {
 import {
   createCustomerByAdmin,
   updateCustomerByAdmin,
+  updateCustomerStores,
   deactivateCustomer,
   reactivateCustomer,
 } from "@/app/actions/manage-customers";
@@ -39,7 +40,7 @@ const EMPTY_CREATE_FORM = {
   phone: "",
   gender: "female" as "female" | "male" | "other",
   birthMonth: 1,
-  primaryStoreId: null as number | null,
+  storeIds: [] as number[],
 };
 
 export default function AdminCustomersPage() {
@@ -62,11 +63,7 @@ export default function AdminCustomersPage() {
   const [creating, setCreating] = useState(false);
 
   const [editing, setEditing] = useState<CustomerListItem | null>(null);
-  const [editForm, setEditForm] = useState({
-    name: "",
-    phone: "",
-    primaryStoreId: null as number | null,
-  });
+  const [editForm, setEditForm] = useState({ name: "", phone: "", storeIds: [] as number[] });
   const [saving, setSaving] = useState(false);
 
   function reload() {
@@ -136,17 +133,33 @@ export default function AdminCustomersPage() {
 
   function startEdit(customer: CustomerListItem) {
     setEditing(customer);
-    setEditForm({
-      name: customer.name,
-      phone: customer.phone,
-      primaryStoreId: customer.primaryStoreId,
-    });
+    setEditForm({ name: customer.name, phone: customer.phone, storeIds: customer.storeIds });
+  }
+
+  function toggleEditStore(storeId: number) {
+    setEditForm((f) => ({
+      ...f,
+      storeIds: f.storeIds.includes(storeId)
+        ? f.storeIds.filter((id) => id !== storeId)
+        : [...f.storeIds, storeId],
+    }));
+  }
+
+  function toggleCreateStore(storeId: number) {
+    setCreateForm((f) => ({
+      ...f,
+      storeIds: f.storeIds.includes(storeId)
+        ? f.storeIds.filter((id) => id !== storeId)
+        : [...f.storeIds, storeId],
+    }));
   }
 
   async function handleSaveEdit() {
     if (!editing) return;
     setSaving(true);
-    await updateCustomerByAdmin({ memberId: editing.id, ...editForm });
+    await updateCustomerByAdmin({ memberId: editing.id, name: editForm.name, phone: editForm.phone });
+    // 以下が失敗すると氏名・電話番号のみ更新され利用店舗が変わらない状態になり得る（トランザクション未対応の既知のトレードオフ）。
+    await updateCustomerStores(editing.id, editForm.storeIds);
     setSaving(false);
     setEditing(null);
     reload();
@@ -270,7 +283,7 @@ export default function AdminCustomersPage() {
                   </button>
                 </th>
               ))}
-              <th className="p-3">所属店舗</th>
+              <th className="p-3">利用店舗</th>
               <th className="p-3"></th>
             </tr>
           </thead>
@@ -297,7 +310,7 @@ export default function AdminCustomersPage() {
                 <td className="p-3">{c.visitCount}</td>
                 <td className="p-3">{formatYen(c.totalSpent)}</td>
                 <td className="p-3">{c.lastVisitDate ?? "—"}</td>
-                <td className="p-3">{c.primaryStoreName ?? "—"}</td>
+                <td className="p-3">{c.storeNames.join("、") || "—"}</td>
                 <td className="p-3">
                   <div className="flex items-center gap-2">
                     <button
@@ -396,23 +409,21 @@ export default function AdminCustomersPage() {
               ))}
             </select>
           </div>
-          <select
-            value={createForm.primaryStoreId ?? ""}
-            onChange={(e) =>
-              setCreateForm({
-                ...createForm,
-                primaryStoreId: e.target.value ? Number(e.target.value) : null,
-              })
-            }
-            className="h-10 rounded-md border border-neutral-300 px-2"
-          >
-            <option value="">所属店舗（任意）</option>
-            {stores.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+          <div>
+            <p className="mb-1 text-sm text-neutral-600">利用店舗</p>
+            <div className="flex flex-wrap gap-3">
+              {stores.map((s) => (
+                <label key={s.id} className="flex items-center gap-1 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={createForm.storeIds.includes(s.id)}
+                    onChange={() => toggleCreateStore(s.id)}
+                  />
+                  {s.name}
+                </label>
+              ))}
+            </div>
+          </div>
           <button
             type="button"
             disabled={creating || !createForm.name || !createForm.email || !createForm.phone}
@@ -444,23 +455,21 @@ export default function AdminCustomersPage() {
             onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
             className="h-10 rounded-md border border-neutral-300 px-2"
           />
-          <select
-            value={editForm.primaryStoreId ?? ""}
-            onChange={(e) =>
-              setEditForm({
-                ...editForm,
-                primaryStoreId: e.target.value ? Number(e.target.value) : null,
-              })
-            }
-            className="h-10 rounded-md border border-neutral-300 px-2"
-          >
-            <option value="">所属店舗（任意）</option>
-            {stores.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+          <div>
+            <p className="mb-1 text-sm text-neutral-600">利用店舗</p>
+            <div className="flex flex-wrap gap-3">
+              {stores.map((s) => (
+                <label key={s.id} className="flex items-center gap-1 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={editForm.storeIds.includes(s.id)}
+                    onChange={() => toggleEditStore(s.id)}
+                  />
+                  {s.name}
+                </label>
+              ))}
+            </div>
+          </div>
           <button
             type="button"
             disabled={saving || !editForm.name || !editForm.phone}
