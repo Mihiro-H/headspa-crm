@@ -97,7 +97,16 @@ export default function AdminCampaignsPage() {
     }
     setSubmitting(false);
     setModalOpen(false);
-    reload();
+    // 新規作成は一覧の先頭（1ページ目）に表示されるため、1ページ目以外を見ていた場合は
+    // 1ページ目に戻す。編集は表示順が変わらないため、閲覧中のページのまま再取得する。
+    // 1ページ目なら useEffect の再発火が起きないため直接再取得する。
+    if (editingId) {
+      reload();
+    } else if (page === 1) {
+      reload();
+    } else {
+      setPage(1);
+    }
   }
 
   async function handleDelete(c: CampaignListItem) {
