@@ -9,7 +9,7 @@ export interface CreateCustomerByAdminParams {
   phone: string;
   gender: MemberGender;
   birthMonth: number;
-  primaryStoreId: number | null;
+  storeIds: number[];
 }
 
 export type CreateCustomerByAdminResult =
@@ -35,8 +35,8 @@ export async function createCustomerByAdmin(
       phone: params.phone,
       gender: params.gender,
       birthMonth: params.birthMonth,
-      primaryStoreId: params.primaryStoreId,
       statusId: defaultStatus.id,
+      usedStores: { create: params.storeIds.map((storeId) => ({ storeId })) },
     },
   });
 
@@ -47,7 +47,6 @@ export interface UpdateCustomerByAdminParams {
   memberId: number;
   name: string;
   phone: string;
-  primaryStoreId: number | null;
 }
 
 export async function updateCustomerByAdmin(params: UpdateCustomerByAdminParams): Promise<void> {
@@ -56,7 +55,16 @@ export async function updateCustomerByAdmin(params: UpdateCustomerByAdminParams)
     data: {
       name: params.name,
       phone: params.phone,
-      primaryStoreId: params.primaryStoreId,
+    },
+  });
+}
+
+// 利用店舗を丸ごと置き換える（deleteMany + createのreplace-allパターン）。
+export async function updateCustomerStores(memberId: number, storeIds: number[]): Promise<void> {
+  await prisma.member.update({
+    where: { id: memberId },
+    data: {
+      usedStores: { deleteMany: {}, create: storeIds.map((storeId) => ({ storeId })) },
     },
   });
 }

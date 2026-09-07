@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   createCustomerByAdmin,
   updateCustomerByAdmin,
+  updateCustomerStores,
   deactivateCustomer,
   reactivateCustomer,
 } from "./manage-customers";
@@ -19,7 +20,7 @@ describe("createCustomerByAdmin", () => {
     vi.clearAllMocks();
   });
 
-  it("creates a member with the lowest-ranked status when the email is unused", async () => {
+  it("creates a member with the lowest-ranked status and given used stores", async () => {
     vi.mocked(prisma.member.findUnique).mockResolvedValue(null);
     vi.mocked(prisma.customerStatus.findFirstOrThrow).mockResolvedValue({ id: 1 } as never);
     vi.mocked(prisma.member.create).mockResolvedValue({ id: 42 } as never);
@@ -30,7 +31,7 @@ describe("createCustomerByAdmin", () => {
       phone: "090-1234-5678",
       gender: "male",
       birthMonth: 4,
-      primaryStoreId: 2,
+      storeIds: [2, 3],
     });
 
     expect(result).toEqual({ status: "created", memberId: 42 });
@@ -41,8 +42,8 @@ describe("createCustomerByAdmin", () => {
         phone: "090-1234-5678",
         gender: "male",
         birthMonth: 4,
-        primaryStoreId: 2,
         statusId: 1,
+        usedStores: { create: [{ storeId: 2 }, { storeId: 3 }] },
       },
     });
   });
@@ -56,7 +57,7 @@ describe("createCustomerByAdmin", () => {
       phone: "090-1234-5678",
       gender: "male",
       birthMonth: 4,
-      primaryStoreId: null,
+      storeIds: [],
     });
 
     expect(result).toEqual({ status: "email_taken" });
@@ -69,19 +70,33 @@ describe("updateCustomerByAdmin", () => {
     vi.clearAllMocks();
   });
 
-  it("updates name, phone, and primary store", async () => {
+  it("updates name and phone only", async () => {
     vi.mocked(prisma.member.update).mockResolvedValue({} as never);
 
-    await updateCustomerByAdmin({
-      memberId: 1,
-      name: "新氏名",
-      phone: "090-0000-0000",
-      primaryStoreId: 3,
-    });
+    await updateCustomerByAdmin({ memberId: 1, name: "新氏名", phone: "090-0000-0000" });
 
     expect(prisma.member.update).toHaveBeenCalledWith({
       where: { id: 1 },
-      data: { name: "新氏名", phone: "090-0000-0000", primaryStoreId: 3 },
+      data: { name: "新氏名", phone: "090-0000-0000" },
+    });
+  });
+});
+
+describe("updateCustomerStores", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("replaces the member's used stores", async () => {
+    vi.mocked(prisma.member.update).mockResolvedValue({} as never);
+
+    await updateCustomerStores(1, [2, 4]);
+
+    expect(prisma.member.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: {
+        usedStores: { deleteMany: {}, create: [{ storeId: 2 }, { storeId: 4 }] },
+      },
     });
   });
 });
