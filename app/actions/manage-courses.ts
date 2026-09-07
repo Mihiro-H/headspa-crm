@@ -70,3 +70,23 @@ export async function createCourse(params: CreateCourseParams): Promise<{ course
   });
   return { courseId: course.id };
 }
+
+export interface UpdateCourseDetailsParams {
+  courseId: number;
+  name: string;
+  durationEstimateMin: number;
+}
+
+export async function updateCourseDetails(params: UpdateCourseDetailsParams): Promise<void> {
+  await prisma.course.update({
+    where: { id: params.courseId },
+    data: { name: params.name, durationEstimateMin: params.durationEstimateMin },
+  });
+}
+
+export async function updateCoursePublished(courseId: number, isPublished: boolean): Promise<void> {
+  await prisma.course.update({
+    where: { id: courseId },
+    data: { isPublished },
+  });
+}

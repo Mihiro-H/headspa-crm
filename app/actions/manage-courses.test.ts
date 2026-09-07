@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { listAllCoursesForManagement, updateCoursePrice, createCourse } from "./manage-courses";
+import {
+  listAllCoursesForManagement,
+  updateCoursePrice,
+  createCourse,
+  updateCourseDetails,
+  updateCoursePublished,
+} from "./manage-courses";
 import { prisma } from "@/lib/db";
 
 vi.mock("@/lib/db", () => ({
@@ -95,6 +101,40 @@ describe("createCourse", () => {
         genderRestriction: "none",
         sortOrder: 1,
       },
+    });
+  });
+});
+
+describe("updateCourseDetails", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("updates name and durationEstimateMin", async () => {
+    vi.mocked(prisma.course.update).mockResolvedValue({} as never);
+
+    await updateCourseDetails({ courseId: 1, name: "プレミアム改", durationEstimateMin: 75 });
+
+    expect(prisma.course.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { name: "プレミアム改", durationEstimateMin: 75 },
+    });
+  });
+});
+
+describe("updateCoursePublished", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("updates isPublished", async () => {
+    vi.mocked(prisma.course.update).mockResolvedValue({} as never);
+
+    await updateCoursePublished(1, false);
+
+    expect(prisma.course.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { isPublished: false },
     });
   });
 });
