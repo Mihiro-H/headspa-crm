@@ -14,10 +14,13 @@ import { listAllCoursesForManagement, type ManagedCourse } from "@/app/actions/m
 import { listCourseCategories, type CourseCategoryListItem } from "@/app/actions/course-categories";
 import { listStores, type StoreListItem } from "@/app/actions/stores";
 import { Modal } from "@/components/ui/modal";
+import { Pagination } from "@/components/ui/pagination";
 
 function formatYen(amount: number): string {
   return `¥${amount.toLocaleString("ja-JP")}`;
 }
+
+const PAGE_SIZE = 20;
 
 const EMPTY_FORM = {
   name: "",
@@ -33,10 +36,12 @@ const EMPTY_FORM = {
 
 export default function AdminCampaignsPage() {
   const [campaigns, setCampaigns] = useState<CampaignListItem[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [courses, setCourses] = useState<ManagedCourse[]>([]);
   const [categories, setCategories] = useState<CourseCategoryListItem[]>([]);
   const [stores, setStores] = useState<StoreListItem[]>([]);
   const [includeUnpublished, setIncludeUnpublished] = useState(false);
+  const [page, setPage] = useState(1);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -44,13 +49,16 @@ export default function AdminCampaignsPage() {
   const [submitting, setSubmitting] = useState(false);
 
   function reload() {
-    listCampaigns({ includeUnpublished }).then(setCampaigns);
+    listCampaigns({ includeUnpublished, page }).then((result) => {
+      setCampaigns(result.items);
+      setTotalCount(result.totalCount);
+    });
   }
 
   useEffect(() => {
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [includeUnpublished]);
+  }, [includeUnpublished, page]);
 
   useEffect(() => {
     listAllCoursesForManagement().then(setCourses);
@@ -121,10 +129,11 @@ export default function AdminCampaignsPage() {
     }));
   }
 
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="font-heading text-2xl text-primary-700">キャンペーン管理</h1>
+      <div className="flex items-center justify-end">
         <button
           type="button"
           onClick={openCreate}
@@ -139,15 +148,18 @@ export default function AdminCampaignsPage() {
         <input
           type="checkbox"
           checked={includeUnpublished}
-          onChange={(e) => setIncludeUnpublished(e.target.checked)}
+          onChange={(e) => {
+            setPage(1);
+            setIncludeUnpublished(e.target.checked);
+          }}
         />
         無効なキャンペーンも表示
       </label>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm">
+      <div className="max-h-[60vh] overflow-y-auto overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-neutral-200 text-left text-neutral-500">
+            <tr className="border-b border-neutral-200 bg-neutral-0 text-left text-neutral-500 sticky top-0 z-10">
               <th className="p-3">キャンペーン名</th>
               <th className="p-3">割引</th>
               <th className="p-3">期間</th>
@@ -212,6 +224,9 @@ export default function AdminCampaignsPage() {
           <p className="p-6 text-center text-sm text-neutral-500">キャンペーンがありません。</p>
         )}
       </div>
+
+      <p className="text-center text-xs text-neutral-500">{totalCount}件中 {campaigns.length}件を表示</p>
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
       <Modal
         open={modalOpen}
