@@ -19,22 +19,38 @@ export interface CampaignListItem {
   categoryIds: number[];
 }
 
+export const CAMPAIGN_PAGE_SIZE = 20;
+
 export interface ListCampaignsParams {
   includeUnpublished?: boolean;
+  page?: number;
 }
 
-export async function listCampaigns(params?: ListCampaignsParams): Promise<CampaignListItem[]> {
-  const campaigns = await prisma.campaign.findMany({
-    where: params?.includeUnpublished ? {} : { isPublished: true },
-    include: {
-      targetStore: true,
-      courseTargets: { include: { course: true } },
-      categoryTargets: { include: { category: true } },
-    },
-    orderBy: { id: "desc" },
-  });
+export interface ListCampaignsResult {
+  items: CampaignListItem[];
+  totalCount: number;
+}
 
-  return campaigns.map((c) => ({
+export async function listCampaigns(params?: ListCampaignsParams): Promise<ListCampaignsResult> {
+  const page = params?.page ?? 1;
+  const where = params?.includeUnpublished ? {} : { isPublished: true };
+
+  const [campaigns, totalCount] = await Promise.all([
+    prisma.campaign.findMany({
+      where,
+      include: {
+        targetStore: true,
+        courseTargets: { include: { course: true } },
+        categoryTargets: { include: { category: true } },
+      },
+      orderBy: { id: "desc" },
+      skip: (page - 1) * CAMPAIGN_PAGE_SIZE,
+      take: CAMPAIGN_PAGE_SIZE,
+    }),
+    prisma.campaign.count({ where }),
+  ]);
+
+  const items = campaigns.map((c) => ({
     id: c.id,
     name: c.name,
     discountType: c.discountType,
@@ -52,6 +68,8 @@ export async function listCampaigns(params?: ListCampaignsParams): Promise<Campa
     courseIds: c.courseTargets.map((t) => t.courseId),
     categoryIds: c.categoryTargets.map((t) => t.categoryId),
   }));
+
+  return { items, totalCount };
 }
 
 export interface CreateCampaignParams {

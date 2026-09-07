@@ -10,13 +10,14 @@ import { prisma } from "@/lib/db";
 
 vi.mock("@/lib/db", () => ({
   prisma: {
-    campaign: { findMany: vi.fn(), create: vi.fn(), update: vi.fn() },
+    campaign: { findMany: vi.fn(), count: vi.fn(), create: vi.fn(), update: vi.fn() },
   },
 }));
 
 describe("listCampaigns", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(prisma.campaign.count).mockResolvedValue(0);
   });
 
   it("returns published campaigns with target ids and names by default", async () => {
@@ -36,29 +37,34 @@ describe("listCampaigns", () => {
         categoryTargets: [{ categoryId: 9, category: { name: "頭皮ケア重点" } }],
       },
     ] as never);
+    vi.mocked(prisma.campaign.count).mockResolvedValue(1);
 
     const result = await listCampaigns();
 
-    expect(result).toEqual([
-      {
-        id: 1,
-        name: "秋の頭皮ケアキャンペーン",
-        discountType: "percentage",
-        discountValue: 10,
-        startDate: "2026-09-01",
-        endDate: "2026-09-30",
-        priority: 0,
-        isPublished: true,
-        targetStoreId: null,
-        targetStoreName: "全店舗",
-        targetNames: ["スタンダード", "頭皮ケア重点"],
-        courseIds: [5],
-        categoryIds: [9],
-      },
-    ]);
+    expect(result).toEqual({
+      items: [
+        {
+          id: 1,
+          name: "秋の頭皮ケアキャンペーン",
+          discountType: "percentage",
+          discountValue: 10,
+          startDate: "2026-09-01",
+          endDate: "2026-09-30",
+          priority: 0,
+          isPublished: true,
+          targetStoreId: null,
+          targetStoreName: "全店舗",
+          targetNames: ["スタンダード", "頭皮ケア重点"],
+          courseIds: [5],
+          categoryIds: [9],
+        },
+      ],
+      totalCount: 1,
+    });
     expect(prisma.campaign.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { isPublished: true } }),
+      expect.objectContaining({ where: { isPublished: true }, skip: 0, take: 20 }),
     );
+    expect(prisma.campaign.count).toHaveBeenCalledWith({ where: { isPublished: true } });
   });
 
   it("includes unpublished campaigns when requested", async () => {
@@ -67,6 +73,18 @@ describe("listCampaigns", () => {
     await listCampaigns({ includeUnpublished: true });
 
     expect(prisma.campaign.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: {} }));
+  });
+
+  it("applies skip/take based on the requested page", async () => {
+    vi.mocked(prisma.campaign.findMany).mockResolvedValue([] as never);
+    vi.mocked(prisma.campaign.count).mockResolvedValue(33);
+
+    const result = await listCampaigns({ page: 2 });
+
+    expect(prisma.campaign.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 20, take: 20 }),
+    );
+    expect(result.totalCount).toBe(33);
   });
 });
 
