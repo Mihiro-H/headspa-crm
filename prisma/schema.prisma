@@ -34,7 +34,7 @@ model Store {
   staff          Staff[]
   storeHolidays  StoreHoliday[]
   admins         Admin[]
-  primaryMembers Member[]       @relation("MemberPrimaryStore")
+  memberStores   MemberStore[]
   campaigns      Campaign[]
   reservations   Reservation[]
   notifications  Notification[]
@@ -132,7 +132,6 @@ model CustomerStatus {
 
 model Member {
   id             Int      @id @default(autoincrement()) @map("member_id")
-  primaryStoreId Int?     @map("primary_store_id")
   statusId       Int      @map("status_id")
   name           String   @db.VarChar(100)
   nameKana       String?  @map("name_kana") @db.VarChar(100)
@@ -151,7 +150,7 @@ model Member {
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   status        CustomerStatus @relation(fields: [statusId], references: [id])
-  primaryStore  Store?         @relation("MemberPrimaryStore", fields: [primaryStoreId], references: [id])
+  usedStores    MemberStore[]
   reservations  Reservation[]
   customerNotes CustomerNote[]
   emailLineLogs EmailLineLog[]
@@ -159,6 +158,18 @@ model Member {
   @@index([statusId, visitCount])
   @@index([birthMonth])
   @@map("members")
+}
+
+model MemberStore {
+  id       Int    @id @default(autoincrement())
+  memberId Int    @map("member_id")
+  storeId  Int    @map("store_id")
+
+  member Member @relation(fields: [memberId], references: [id])
+  store  Store  @relation(fields: [storeId], references: [id])
+
+  @@unique([memberId, storeId])
+  @@map("member_stores")
 }
 
 enum GenderRestriction {
