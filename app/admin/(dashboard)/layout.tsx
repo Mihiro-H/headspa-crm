@@ -16,7 +16,7 @@ import {
   FileText,
   Terminal,
 } from "lucide-react";
-import { NotificationBell } from "@/components/admin/notification-bell";
+import { AdminHeader } from "@/components/admin/admin-header";
 
 const NAV_ICON_SIZE = 16;
 
@@ -65,9 +65,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
         </nav>
       </aside>
       <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-end border-b border-neutral-200 bg-neutral-0 px-6 py-3">
-          <NotificationBell />
-        </header>
+        <AdminHeader />
         <main className="flex-1 bg-neutral-50 p-6">{children}</main>
       </div>
     </div>
