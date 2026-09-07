@@ -6,6 +6,8 @@ import {
   listAllCoursesForManagement,
   updateCoursePrice,
   createCourse,
+  updateCourseDetails,
+  updateCoursePublished,
   type ManagedCourse,
 } from "@/app/actions/manage-courses";
 import { listCourseCategories, type CourseCategoryListItem } from "@/app/actions/course-categories";
@@ -26,6 +28,7 @@ export default function AdminMenuPage() {
   const [courses, setCourses] = useState<ManagedCourse[]>([]);
   const [categories, setCategories] = useState<CourseCategoryListItem[]>([]);
   const [saving, setSaving] = useState<number | null>(null);
+  const [savingField, setSavingField] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [creating, setCreating] = useState(false);
@@ -43,6 +46,40 @@ export default function AdminMenuPage() {
     setSaving(courseId);
     await updateCoursePrice({ courseId, price });
     setSaving(null);
+  }
+
+  async function handleNameBlur(courseId: number, name: string) {
+    setSavingField(courseId);
+    await updateCourseDetails({ courseId, name, durationEstimateMin: currentDuration(courseId) });
+    setSavingField(null);
+  }
+
+  async function handleDurationBlur(courseId: number, durationEstimateMin: number) {
+    setSavingField(courseId);
+    await updateCourseDetails({ courseId, name: currentName(courseId), durationEstimateMin });
+    setSavingField(null);
+  }
+
+  function currentName(courseId: number): string {
+    return courses.find((c) => c.id === courseId)?.name ?? "";
+  }
+
+  function currentDuration(courseId: number): number {
+    return courses.find((c) => c.id === courseId)?.durationEstimateMin ?? 0;
+  }
+
+  async function handlePublishedChange(courseId: number, isPublished: boolean) {
+    setSavingField(courseId);
+    const previousCourses = courses;
+    setCourses((prev) => prev.map((c) => (c.id === courseId ? { ...c, isPublished } : c)));
+    try {
+      await updateCoursePublished(courseId, isPublished);
+    } catch (error) {
+      setCourses(previousCourses);
+      throw error;
+    } finally {
+      setSavingField(null);
+    }
   }
 
   async function handleCreate() {
@@ -89,14 +126,31 @@ export default function AdminMenuPage() {
                   <th className="p-3">コース名</th>
                   <th className="p-3">所要時間</th>
                   <th className="p-3">料金（税込）</th>
+                  <th className="p-3">ステータス</th>
                   <th className="p-3"></th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((c) => (
                   <tr key={c.id} className="border-b border-neutral-100 last:border-0">
-                    <td className="p-3">{c.name}</td>
-                    <td className="p-3">{c.durationEstimateMin}分</td>
+                    <td className="p-3">
+                      <input
+                        type="text"
+                        defaultValue={c.name}
+                        onBlur={(e) => handleNameBlur(c.id, e.target.value)}
+                        className="h-9 w-40 rounded-md border border-neutral-300 px-2"
+                      />
+                    </td>
+                    <td className="p-3">
+                      <input
+                        type="number"
+                        min={0}
+                        defaultValue={c.durationEstimateMin}
+                        onBlur={(e) => handleDurationBlur(c.id, Number(e.target.value))}
+                        className="h-9 w-20 rounded-md border border-neutral-300 px-2"
+                      />
+                      分
+                    </td>
                     <td className="p-3">
                       <input
                         type="number"
@@ -106,8 +160,18 @@ export default function AdminMenuPage() {
                         className="h-9 w-28 rounded-md border border-neutral-300 px-2"
                       />
                     </td>
+                    <td className="p-3">
+                      <select
+                        value={c.isPublished ? "published" : "unpublished"}
+                        onChange={(e) => handlePublishedChange(c.id, e.target.value === "published")}
+                        className="h-9 rounded-md border border-neutral-300 px-2"
+                      >
+                        <option value="published">公開中</option>
+                        <option value="unpublished">停止中</option>
+                      </select>
+                    </td>
                     <td className="p-3 text-xs text-neutral-500">
-                      {saving === c.id ? "保存中..." : ""}
+                      {saving === c.id || savingField === c.id ? "保存中..." : ""}
                     </td>
                   </tr>
                 ))}
