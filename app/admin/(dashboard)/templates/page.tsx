@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react";
 import { Plus, Pencil } from "lucide-react";
 import {
-  listTemplates,
+  listTemplatesPage,
   createTemplate,
   updateTemplate,
   type TemplateListItem,
   type DeliveryTemplateType,
 } from "@/app/actions/manage-templates";
 import { Modal } from "@/components/ui/modal";
+import { Pagination } from "@/components/ui/pagination";
 
 const TYPE_LABEL: Record<DeliveryTemplateType, string> = {
   birthday: "誕生月メール",
@@ -17,22 +18,30 @@ const TYPE_LABEL: Record<DeliveryTemplateType, string> = {
   segment: "セグメント配信",
 };
 
+const PAGE_SIZE = 20;
+
 const EMPTY_FORM = { type: "segment" as DeliveryTemplateType, name: "", subject: "", bodyText: "" };
 
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState<TemplateListItem[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
   function refresh() {
-    listTemplates().then(setTemplates);
+    listTemplatesPage(page).then((result) => {
+      setTemplates(result.items);
+      setTotalCount(result.totalCount);
+    });
   }
 
   useEffect(() => {
     refresh();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
   function openCreate() {
     setEditingId(null);
@@ -65,13 +74,23 @@ export default function TemplatesPage() {
     }
     setSaving(false);
     setModalOpen(false);
-    refresh();
+    // 新規作成は一覧の先頭（1ページ目）に表示されるため、1ページ目以外を見ていた場合は
+    // 1ページ目に戻す。編集は表示順が変わらないため、閲覧中のページのまま再取得する。
+    // 1ページ目なら useEffect の再発火が起きないため直接再取得する。
+    if (editingId) {
+      refresh();
+    } else if (page === 1) {
+      refresh();
+    } else {
+      setPage(1);
+    }
   }
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="font-heading text-2xl text-primary-700">配信テンプレート管理</h1>
+      <div className="flex items-center justify-end">
         <button
           type="button"
           onClick={openCreate}
@@ -82,10 +101,10 @@ export default function TemplatesPage() {
         </button>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm">
+      <div className="max-h-[60vh] overflow-y-auto overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-neutral-200 text-left text-neutral-500">
+            <tr className="border-b border-neutral-200 bg-neutral-0 text-left text-neutral-500 sticky top-0 z-10">
               <th className="p-3">種別</th>
               <th className="p-3">名称</th>
               <th className="p-3">件名</th>
@@ -116,6 +135,9 @@ export default function TemplatesPage() {
           <p className="p-6 text-center text-sm text-neutral-500">テンプレートがありません。</p>
         )}
       </div>
+
+      <p className="text-center text-xs text-neutral-500">{totalCount}件中 {templates.length}件を表示</p>
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
       <Modal
         open={modalOpen}
