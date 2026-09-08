@@ -14,6 +14,8 @@ type LoadState =
   | { status: "invalid" }
   | { status: "expired" };
 
+const MIN_PASSWORD_LENGTH = 8;
+
 export default function AcceptAdminInvitePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -41,8 +43,8 @@ export default function AcceptAdminInvitePage() {
   }, [token]);
 
   async function handleSubmit() {
-    if (password.length < 8) {
-      setError("パスワードは8文字以上で入力してください。");
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setError(`パスワードは${MIN_PASSWORD_LENGTH}文字以上で入力してください。`);
       return;
     }
     if (password !== passwordConfirm) {
@@ -51,16 +53,21 @@ export default function AcceptAdminInvitePage() {
     }
     setSubmitting(true);
     setError(null);
-    const result = await acceptAdminInvite(token, password);
-    setSubmitting(false);
-    if (result.status === "accepted") {
-      router.push("/admin/login");
-    } else {
-      setError(
-        result.status === "expired"
-          ? "招待の有効期限が切れています。管理者に再招待を依頼してください。"
-          : "招待リンクが無効です。管理者に再招待を依頼してください。",
-      );
+    try {
+      const result = await acceptAdminInvite(token, password);
+      if (result.status === "accepted") {
+        router.push("/admin/login");
+      } else {
+        setError(
+          result.status === "expired"
+            ? "招待の有効期限が切れています。管理者に再招待を依頼してください。"
+            : "招待リンクが無効です。管理者に再招待を依頼してください。",
+        );
+      }
+    } catch {
+      setError("処理に失敗しました。時間をおいて再度お試しください。");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -94,7 +101,7 @@ export default function AcceptAdminInvitePage() {
       {error && <p className="rounded-lg bg-error/10 p-3 text-sm text-error">{error}</p>}
       <input
         type="password"
-        placeholder="新しいパスワード（8文字以上）"
+        placeholder={`新しいパスワード（${MIN_PASSWORD_LENGTH}文字以上）`}
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         className="h-12 rounded-md border border-neutral-300 px-3"
