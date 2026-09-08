@@ -7,6 +7,7 @@ import { calculateReservationTotal } from "@/lib/reservation/total-price";
 import { calculateCancellationDeadline } from "@/lib/reservation/cancellation-deadline";
 import { resolveCourseCampaigns } from "./course-campaigns";
 import { addUsedStore } from "@/lib/customer/add-used-store";
+import { getCurrentAdminStoreScope } from "./current-admin-scope";
 
 export interface CreatePhoneReservationParams {
   memberId: number;
@@ -19,12 +20,17 @@ export interface CreatePhoneReservationParams {
 }
 
 export type CreatePhoneReservationResult =
-  | { status: "created"; reservationId: number }
-  | { status: "slot_unavailable" };
+  { status: "created"; reservationId: number } | { status: "slot_unavailable" };
 
 export async function createPhoneReservation(
   params: CreatePhoneReservationParams,
 ): Promise<CreatePhoneReservationResult> {
+  // クライアントから渡されたstoreIdを鵜呑みにせず、閲覧者の店舗スコープと突き合わせる。
+  const scope = await getCurrentAdminStoreScope();
+  if (!scope.isUnrestricted && !scope.storeIds.includes(params.storeId)) {
+    throw new Error("unauthorized");
+  }
+
   const [course, options, staff] = await Promise.all([
     prisma.course.findUniqueOrThrow({
       where: { id: params.courseId },
@@ -73,7 +79,11 @@ export async function createPhoneReservation(
   const activeCourseCampaigns = resolveCourseCampaigns(course, params.storeId, now);
 
   const pricing = calculateReservationTotal({
-    course: { price: course.price, discountExempt: false, applicableCampaigns: activeCourseCampaigns },
+    course: {
+      price: course.price,
+      discountExempt: false,
+      applicableCampaigns: activeCourseCampaigns,
+    },
     options: options.map((o) => ({
       price: o.price,
       discountExempt: o.discountExempt,

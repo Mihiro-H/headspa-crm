@@ -1,17 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { searchCustomers } from "./search-customers";
 import { prisma } from "@/lib/db";
+import { auth } from "@/auth";
 
 vi.mock("@/lib/db", () => ({
   prisma: {
     member: { findMany: vi.fn(), count: vi.fn() },
+    adminStore: { findMany: vi.fn() },
   },
+}));
+
+vi.mock("@/auth", () => ({
+  auth: vi.fn(),
 }));
 
 describe("searchCustomers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(prisma.member.count).mockResolvedValue(0);
+    // 既存のテストは全て制限なし（hq）の管理者を前提とする。
+    vi.mocked(auth).mockResolvedValue({ user: { id: "1", role: "hq" } } as never);
   });
 
   it("maps members to customer list items with status, used stores, and contact info", async () => {
@@ -167,5 +175,59 @@ describe("searchCustomers", () => {
     expect(result.items.map((c) => c.id)).toEqual([2, 1]);
     expect(result.totalCount).toBe(2);
     expect(prisma.member.count).not.toHaveBeenCalled();
+  });
+
+  it("scopes a restricted admin's search to their own stores when no storeIds filter is requested", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "3", role: "manager" } } as never);
+    vi.mocked(prisma.adminStore.findMany).mockResolvedValue([
+      { storeId: 2 },
+      { storeId: 5 },
+    ] as never);
+    vi.mocked(prisma.member.findMany).mockResolvedValue([] as never);
+
+    await searchCustomers({});
+
+    expect(prisma.member.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          usedStores: { some: { storeId: { in: [2, 5] } } },
+        }),
+      }),
+    );
+  });
+
+  it("intersects a restricted admin's requested storeIds filter with their own scope", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "3", role: "manager" } } as never);
+    vi.mocked(prisma.adminStore.findMany).mockResolvedValue([
+      { storeId: 2 },
+      { storeId: 5 },
+    ] as never);
+    vi.mocked(prisma.member.findMany).mockResolvedValue([] as never);
+
+    await searchCustomers({ storeIds: [5, 9] });
+
+    expect(prisma.member.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          usedStores: { some: { storeId: { in: [5] } } },
+        }),
+      }),
+    );
+  });
+
+  it("returns zero results (in: []), not an unfiltered query, when a restricted admin's requested storeIds don't overlap their scope at all", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "3", role: "manager" } } as never);
+    vi.mocked(prisma.adminStore.findMany).mockResolvedValue([{ storeId: 2 }] as never);
+    vi.mocked(prisma.member.findMany).mockResolvedValue([] as never);
+
+    await searchCustomers({ storeIds: [9] });
+
+    expect(prisma.member.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          usedStores: { some: { storeId: { in: [] } } },
+        }),
+      }),
+    );
   });
 });

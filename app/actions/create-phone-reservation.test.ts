@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createPhoneReservation } from "./create-phone-reservation";
 import { prisma } from "@/lib/db";
+import { auth } from "@/auth";
 
 vi.mock("@/lib/db", () => ({
   prisma: {
@@ -9,7 +10,12 @@ vi.mock("@/lib/db", () => ({
     option: { findMany: vi.fn() },
     staff: { findUniqueOrThrow: vi.fn() },
     memberStore: { upsert: vi.fn() },
+    adminStore: { findMany: vi.fn() },
   },
+}));
+
+vi.mock("@/auth", () => ({
+  auth: vi.fn(),
 }));
 
 const baseCourse = {
@@ -27,6 +33,8 @@ describe("createPhoneReservation", () => {
     vi.mocked(prisma.option.findMany).mockResolvedValue([] as never);
     vi.mocked(prisma.reservation.findMany).mockResolvedValue([] as never);
     vi.mocked(prisma.reservation.create).mockResolvedValue({ id: 200 } as never);
+    // 既存のテストは全て制限なし（hq）の管理者を前提とする。
+    vi.mocked(auth).mockResolvedValue({ user: { id: "1", role: "hq" } } as never);
   });
 
   it("creates a confirmed phone reservation for a known member", async () => {
@@ -65,6 +73,25 @@ describe("createPhoneReservation", () => {
     });
 
     expect(result).toEqual({ status: "slot_unavailable" });
+    expect(prisma.reservation.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects creating a reservation at a store outside a restricted admin's scope", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "3", role: "manager" } } as never);
+    vi.mocked(prisma.adminStore.findMany).mockResolvedValue([{ storeId: 2 }] as never);
+
+    await expect(
+      createPhoneReservation({
+        memberId: 5,
+        storeId: 1,
+        staffId: null,
+        courseId: 10,
+        optionIds: [],
+        reservationDate: "2026-09-20",
+        startMinutes: 660,
+      }),
+    ).rejects.toThrow("unauthorized");
+
     expect(prisma.reservation.create).not.toHaveBeenCalled();
   });
 });

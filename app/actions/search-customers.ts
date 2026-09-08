@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
+import { getCurrentAdminStoreScope } from "./current-admin-scope";
 
 export const CUSTOMER_PAGE_SIZE = 20;
 
@@ -84,12 +85,20 @@ function mapMember(m: {
   };
 }
 
-export async function searchCustomers(
-  params: CustomerSearchParams,
-): Promise<CustomerSearchResult> {
+export async function searchCustomers(params: CustomerSearchParams): Promise<CustomerSearchResult> {
   const sortBy = params.sortBy ?? "id";
   const sortDirection = params.sortDirection ?? "desc";
   const page = params.page ?? 1;
+
+  // クライアントから渡されたstoreIdsを鵜呑みにせず、閲覧者の店舗スコープと突き合わせる。
+  // スコープ制限ありの管理者が指定した店舗が自身のスコープと1件も重ならない場合は
+  // 意図的に「0件」（storeId: { in: [] }）にする（フィルタなし扱いにしてはいけない）。
+  const scope = await getCurrentAdminStoreScope();
+  const effectiveStoreIds = scope.isUnrestricted
+    ? params.storeIds
+    : params.storeIds && params.storeIds.length > 0
+      ? params.storeIds.filter((id) => scope.storeIds.includes(id))
+      : scope.storeIds;
 
   const where = {
     ...(params.name ? { name: { contains: params.name, mode: "insensitive" as const } } : {}),
@@ -97,8 +106,8 @@ export async function searchCustomers(
     ...(params.statusIds && params.statusIds.length > 0
       ? { statusId: { in: params.statusIds } }
       : {}),
-    ...(params.storeIds && params.storeIds.length > 0
-      ? { usedStores: { some: { storeId: { in: params.storeIds } } } }
+    ...(effectiveStoreIds !== undefined
+      ? { usedStores: { some: { storeId: { in: effectiveStoreIds } } } }
       : {}),
     ...(params.includeInactive ? {} : { isActive: true }),
   };
