@@ -26,8 +26,12 @@ export default function AdminDashboardPage() {
   }, []);
 
   useEffect(() => {
-    getDashboardSummary(storeId).then(setSummary);
-  }, [storeId]);
+    getDashboardSummary(
+      storeId,
+      new Date(),
+      scope.isUnrestricted ? undefined : scope.storeIds,
+    ).then(setSummary);
+  }, [storeId, scope]);
 
   const visibleStores = scope.isUnrestricted
     ? stores

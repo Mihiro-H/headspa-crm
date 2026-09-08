@@ -10,12 +10,13 @@ export interface DashboardSummary {
 export async function getDashboardSummary(
   storeId: number | null,
   today: Date = new Date(),
+  allowedStoreIds?: number[],
 ): Promise<DashboardSummary> {
   const reservations = await prisma.reservation.findMany({
     where: {
       reservationDate: today,
       status: { in: ["confirmed", "completed"] },
-      ...(storeId ? { storeId } : {}),
+      ...(storeId ? { storeId } : allowedStoreIds ? { storeId: { in: allowedStoreIds } } : {}),
     },
   });
 

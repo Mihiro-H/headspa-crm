@@ -172,6 +172,35 @@ describe("getSalesReport", () => {
     });
   });
 
+  it("filters to allowedStoreIds when storeId is null but allowedStoreIds is given", async () => {
+    vi.mocked(prisma.reservation.findMany).mockResolvedValue([] as never);
+
+    await getSalesReport({
+      startDate: "2026-09-01",
+      endDate: "2026-09-30",
+      storeId: null,
+      allowedStoreIds: [2, 5],
+    });
+
+    expect(prisma.reservation.findMany).toHaveBeenNthCalledWith(1, {
+      where: {
+        reservationDate: {
+          gte: new Date("2026-09-01T00:00:00.000Z"),
+          lte: new Date("2026-09-30T00:00:00.000Z"),
+        },
+        status: { in: ["confirmed", "completed"] },
+        storeId: { in: [2, 5] },
+      },
+      include: {
+        store: true,
+        member: true,
+        staff: true,
+        items: { include: { course: true } },
+      },
+      orderBy: { reservationDate: "asc" },
+    });
+  });
+
   it("returns zeroed summary and empty breakdowns when there are no reservations in the period", async () => {
     vi.mocked(prisma.reservation.findMany).mockResolvedValue([] as never);
 

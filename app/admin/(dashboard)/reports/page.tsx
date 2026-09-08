@@ -88,7 +88,12 @@ export default function SalesReportPage() {
 
   async function handleSearch() {
     setLoading(true);
-    const result = await getSalesReport({ startDate, endDate, storeId });
+    const result = await getSalesReport({
+      startDate,
+      endDate,
+      storeId,
+      allowedStoreIds: scope.isUnrestricted ? undefined : scope.storeIds,
+    });
     setReport(result);
     setLoading(false);
   }

@@ -50,6 +50,7 @@ export interface GetSalesReportParams {
   startDate: string;
   endDate: string;
   storeId: number | null;
+  allowedStoreIds?: number[];
 }
 
 export async function getSalesReport(params: GetSalesReportParams): Promise<SalesReport> {
@@ -60,7 +61,11 @@ export async function getSalesReport(params: GetSalesReportParams): Promise<Sale
     where: {
       reservationDate: { gte: start, lte: end },
       status: { in: [...REVENUE_STATUSES] },
-      ...(params.storeId ? { storeId: params.storeId } : {}),
+      ...(params.storeId
+        ? { storeId: params.storeId }
+        : params.allowedStoreIds
+          ? { storeId: { in: params.allowedStoreIds } }
+          : {}),
     },
     include: {
       store: true,
@@ -78,8 +83,7 @@ export async function getSalesReport(params: GetSalesReportParams): Promise<Sale
   const nominatedTotal = reservations
     .filter((r) => r.staffId !== null)
     .reduce((sum, r) => sum + r.totalPrice, 0);
-  const nominationSalesRatio =
-    salesTotal > 0 ? Math.round((nominatedTotal / salesTotal) * 100) : 0;
+  const nominationSalesRatio = salesTotal > 0 ? Math.round((nominatedTotal / salesTotal) * 100) : 0;
 
   const memberIds = [
     ...new Set(reservations.map((r) => r.memberId).filter((id): id is number => id !== null)),

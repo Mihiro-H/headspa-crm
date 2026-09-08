@@ -45,4 +45,18 @@ describe("getDashboardSummary", () => {
       },
     });
   });
+
+  it("filters to allowedStoreIds when storeId is null but allowedStoreIds is given", async () => {
+    vi.mocked(prisma.reservation.findMany).mockResolvedValue([] as never);
+
+    await getDashboardSummary(null, today, [2, 5]);
+
+    expect(prisma.reservation.findMany).toHaveBeenCalledWith({
+      where: {
+        reservationDate: today,
+        status: { in: ["confirmed", "completed"] },
+        storeId: { in: [2, 5] },
+      },
+    });
+  });
 });
