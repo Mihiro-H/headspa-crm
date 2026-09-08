@@ -13,6 +13,7 @@ import {
 import { listAllCoursesForManagement, type ManagedCourse } from "@/app/actions/manage-courses";
 import { listCourseCategories, type CourseCategoryListItem } from "@/app/actions/course-categories";
 import { listStores, type StoreListItem } from "@/app/actions/stores";
+import { getCurrentAdminStoreScope, type AdminStoreScope } from "@/app/actions/current-admin-scope";
 import { Modal } from "@/components/ui/modal";
 import { Pagination } from "@/components/ui/pagination";
 
@@ -40,6 +41,7 @@ export default function AdminCampaignsPage() {
   const [courses, setCourses] = useState<ManagedCourse[]>([]);
   const [categories, setCategories] = useState<CourseCategoryListItem[]>([]);
   const [stores, setStores] = useState<StoreListItem[]>([]);
+  const [scope, setScope] = useState<AdminStoreScope>({ isUnrestricted: true, storeIds: [] });
   const [includeUnpublished, setIncludeUnpublished] = useState(false);
   const [page, setPage] = useState(1);
 
@@ -64,6 +66,7 @@ export default function AdminCampaignsPage() {
     listAllCoursesForManagement().then(setCourses);
     listCourseCategories().then(setCategories);
     listStores().then(setStores);
+    getCurrentAdminStoreScope().then(setScope);
   }, []);
 
   function openCreate() {
@@ -147,6 +150,12 @@ export default function AdminCampaignsPage() {
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
+  const visibleCampaigns = scope.isUnrestricted
+    ? campaigns
+    : campaigns.filter(
+        (c) => c.storeIds.length === 0 || c.storeIds.some((id) => scope.storeIds.includes(id)),
+      );
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-end">
@@ -186,14 +195,16 @@ export default function AdminCampaignsPage() {
             </tr>
           </thead>
           <tbody>
-            {campaigns.map((c) => (
+            {visibleCampaigns.map((c) => (
               <tr
                 key={c.id}
                 className={`border-b border-neutral-100 last:border-0 ${!c.isPublished ? "opacity-50" : ""}`}
               >
                 <td className="p-3">{c.name}</td>
                 <td className="p-3">
-                  {c.discountType === "percentage" ? `${c.discountValue}%` : formatYen(c.discountValue)}
+                  {c.discountType === "percentage"
+                    ? `${c.discountValue}%`
+                    : formatYen(c.discountValue)}
                 </td>
                 <td className="p-3">
                   {c.startDate} 〜 {c.endDate}
@@ -236,12 +247,14 @@ export default function AdminCampaignsPage() {
             ))}
           </tbody>
         </table>
-        {campaigns.length === 0 && (
+        {visibleCampaigns.length === 0 && (
           <p className="p-6 text-center text-sm text-neutral-500">キャンペーンがありません。</p>
         )}
       </div>
 
-      <p className="text-center text-xs text-neutral-500">{totalCount}件中 {campaigns.length}件を表示</p>
+      <p className="text-center text-xs text-neutral-500">
+        {totalCount}件中 {visibleCampaigns.length}件を表示
+      </p>
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
       <Modal

@@ -8,6 +8,7 @@ import {
   createStore,
   type ManagedStore,
 } from "@/app/actions/manage-stores";
+import { getCurrentAdminStoreScope, type AdminStoreScope } from "@/app/actions/current-admin-scope";
 import { Modal } from "@/components/ui/modal";
 
 const EMPTY_FORM = {
@@ -25,6 +26,7 @@ const EMPTY_FORM = {
 
 export default function AdminStoresPage() {
   const [stores, setStores] = useState<ManagedStore[]>([]);
+  const [scope, setScope] = useState<AdminStoreScope>({ isUnrestricted: true, storeIds: [] });
   const [saving, setSaving] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -36,7 +38,12 @@ export default function AdminStoresPage() {
 
   useEffect(() => {
     reload();
+    getCurrentAdminStoreScope().then(setScope);
   }, []);
+
+  const visibleStores = scope.isUnrestricted
+    ? stores
+    : stores.filter((s) => scope.storeIds.includes(s.id));
 
   async function handleSave(storeId: number, address: string, phone: string) {
     setSaving(storeId);
@@ -59,27 +66,27 @@ export default function AdminStoresPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-end">
-        <button
-          type="button"
-          onClick={() => setModalOpen(true)}
-          className="flex h-10 items-center gap-1 rounded-lg bg-primary-500 px-4 text-sm font-medium text-white"
-        >
-          <Plus size={16} />
-          新規登録
-        </button>
-      </div>
+      {scope.isUnrestricted && (
+        <div className="flex items-center justify-end">
+          <button
+            type="button"
+            onClick={() => setModalOpen(true)}
+            className="flex h-10 items-center gap-1 rounded-lg bg-primary-500 px-4 text-sm font-medium text-white"
+          >
+            <Plus size={16} />
+            新規登録
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-col gap-4">
-        {stores.map((s) => (
+        {visibleStores.map((s) => (
           <div
             key={s.id}
             className="flex flex-col gap-2 rounded-lg border border-neutral-200 bg-neutral-0 p-4 shadow-sm"
           >
             <p className="font-medium text-neutral-800">{s.name}</p>
-            {s.nearestStation && (
-              <p className="text-xs text-neutral-500">{s.nearestStation}</p>
-            )}
+            {s.nearestStation && <p className="text-xs text-neutral-500">{s.nearestStation}</p>}
             <label className="text-sm text-neutral-600">住所</label>
             <input
               type="text"
