@@ -10,6 +10,7 @@ import {
   type ManagedStaff,
 } from "@/app/actions/manage-staff";
 import { listStores, type StoreListItem } from "@/app/actions/stores";
+import { getCurrentAdminStoreScope, type AdminStoreScope } from "@/app/actions/current-admin-scope";
 import { Modal } from "@/components/ui/modal";
 
 const EMPTY_FORM = { storeId: null as number | null, name: "", bio: "", nominationFee: 0 };
@@ -20,6 +21,7 @@ export default function AdminStaffPage() {
   const [stores, setStores] = useState<StoreListItem[]>([]);
   const [storeFilter, setStoreFilter] = useState<number | null>(null);
   const [saving, setSaving] = useState<number | null>(null);
+  const [scope, setScope] = useState<AdminStoreScope>({ isUnrestricted: true, storeIds: [] });
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [creating, setCreating] = useState(false);
@@ -35,6 +37,12 @@ export default function AdminStaffPage() {
   useEffect(() => {
     reload();
     listStores().then(setStores);
+    getCurrentAdminStoreScope().then((s) => {
+      setScope(s);
+      if (!s.isUnrestricted && s.storeIds.length === 1) {
+        setStoreFilter(s.storeIds[0]);
+      }
+    });
   }, []);
 
   async function handleFeeBlur(member: ManagedStaff, nominationFee: number) {
@@ -81,7 +89,11 @@ export default function AdminStaffPage() {
     reload();
   }
 
-  const visibleStaff = storeFilter === null ? staff : staff.filter((s) => s.storeId === storeFilter);
+  const visibleStaff =
+    storeFilter === null ? staff : staff.filter((s) => s.storeId === storeFilter);
+  const visibleStoreOptions = scope.isUnrestricted
+    ? stores
+    : stores.filter((s) => scope.storeIds.includes(s.id));
 
   return (
     <div className="flex flex-col gap-6">
@@ -92,7 +104,7 @@ export default function AdminStaffPage() {
           className="h-10 rounded-md border border-neutral-300 px-3 text-sm"
         >
           <option value="">全店舗</option>
-          {stores.map((s) => (
+          {visibleStoreOptions.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
             </option>
@@ -181,7 +193,9 @@ export default function AdminStaffPage() {
         <div className="flex flex-col gap-3">
           <select
             value={form.storeId ?? ""}
-            onChange={(e) => setForm({ ...form, storeId: e.target.value ? Number(e.target.value) : null })}
+            onChange={(e) =>
+              setForm({ ...form, storeId: e.target.value ? Number(e.target.value) : null })
+            }
             className="h-10 rounded-md border border-neutral-300 px-2"
           >
             <option value="">所属店舗を選択</option>

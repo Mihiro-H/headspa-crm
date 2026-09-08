@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { listStores, type StoreListItem } from "@/app/actions/stores";
+import { getCurrentAdminStoreScope, type AdminStoreScope } from "@/app/actions/current-admin-scope";
 import {
   getCalendarReservations,
   type CalendarReservation,
@@ -31,11 +32,16 @@ export default function AdminCalendarPage() {
   const [storeId, setStoreId] = useState<number | null>(null);
   const [date, setDate] = useState(todayIso());
   const [reservations, setReservations] = useState<CalendarReservation[]>([]);
+  const [scope, setScope] = useState<AdminStoreScope>({ isUnrestricted: true, storeIds: [] });
 
   useEffect(() => {
-    listStores().then((list) => {
+    Promise.all([listStores(), getCurrentAdminStoreScope()]).then(([list, s]) => {
       setStores(list);
-      if (list.length > 0) setStoreId(list[0].id);
+      setScope(s);
+      const visible = s.isUnrestricted
+        ? list
+        : list.filter((store) => s.storeIds.includes(store.id));
+      if (visible.length > 0) setStoreId(visible[0].id);
     });
   }, []);
 
@@ -43,6 +49,10 @@ export default function AdminCalendarPage() {
     if (storeId === null) return;
     getCalendarReservations(storeId, date).then(setReservations);
   }, [storeId, date]);
+
+  const visibleStores = scope.isUnrestricted
+    ? stores
+    : stores.filter((s) => scope.storeIds.includes(s.id));
 
   const grouped = reservations.reduce<Record<string, CalendarReservation[]>>((acc, r) => {
     const key = r.staffName ?? "指名なし";
@@ -59,7 +69,7 @@ export default function AdminCalendarPage() {
           onChange={(e) => setStoreId(e.target.value ? Number(e.target.value) : null)}
           className="h-10 rounded-md border border-neutral-300 px-3 text-sm"
         >
-          {stores.map((s) => (
+          {visibleStores.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
             </option>
