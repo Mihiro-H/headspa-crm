@@ -29,7 +29,7 @@ const EMPTY_FORM = {
   startDate: "",
   endDate: "",
   priority: 0,
-  targetStoreId: null as number | null,
+  storeIds: [] as number[],
   courseIds: [] as number[],
   categoryIds: [] as number[],
 };
@@ -81,7 +81,7 @@ export default function AdminCampaignsPage() {
       startDate: c.startDate,
       endDate: c.endDate,
       priority: c.priority,
-      targetStoreId: c.targetStoreId,
+      storeIds: c.storeIds,
       courseIds: c.courseIds,
       categoryIds: c.categoryIds,
     });
@@ -118,6 +118,13 @@ export default function AdminCampaignsPage() {
   async function handleRestore(c: CampaignListItem) {
     await republishCampaign(c.id);
     reload();
+  }
+
+  function toggleStore(id: number) {
+    setForm((f) => ({
+      ...f,
+      storeIds: f.storeIds.includes(id) ? f.storeIds.filter((s) => s !== id) : [...f.storeIds, id],
+    }));
   }
 
   function toggleCourse(id: number) {
@@ -191,7 +198,7 @@ export default function AdminCampaignsPage() {
                 <td className="p-3">
                   {c.startDate} 〜 {c.endDate}
                 </td>
-                <td className="p-3">{c.targetStoreName}</td>
+                <td className="p-3">{c.storeNames.join("、")}</td>
                 <td className="p-3">{c.targetNames.join("、") || "—"}</td>
                 <td className="p-3">{c.priority}</td>
                 <td className="p-3">
@@ -296,20 +303,21 @@ export default function AdminCampaignsPage() {
             />
           </div>
 
-          <select
-            value={form.targetStoreId ?? ""}
-            onChange={(e) =>
-              setForm({ ...form, targetStoreId: e.target.value ? Number(e.target.value) : null })
-            }
-            className="h-10 rounded-md border border-neutral-300 px-3 text-sm"
-          >
-            <option value="">全店舗</option>
-            {stores.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+          <div>
+            <p className="mb-1 text-sm text-neutral-600">対象店舗（未選択の場合は全店舗が対象）</p>
+            <div className="flex flex-wrap gap-3">
+              {stores.map((s) => (
+                <label key={s.id} className="flex items-center gap-1 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.storeIds.includes(s.id)}
+                    onChange={() => toggleStore(s.id)}
+                  />
+                  {s.name}
+                </label>
+              ))}
+            </div>
+          </div>
 
           <div>
             <p className="mb-1 text-sm text-neutral-600">対象カテゴリ</p>
@@ -329,16 +337,25 @@ export default function AdminCampaignsPage() {
 
           <div>
             <p className="mb-1 text-sm text-neutral-600">対象コース</p>
-            <div className="flex flex-wrap gap-3">
-              {courses.map((course) => (
-                <label key={course.id} className="flex items-center gap-1 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={form.courseIds.includes(course.id)}
-                    onChange={() => toggleCourse(course.id)}
-                  />
-                  {course.name}
-                </label>
+            <div className="flex flex-col gap-2">
+              {categories.map((cat) => (
+                <div key={cat.id}>
+                  <p className="mb-1 text-xs font-medium text-neutral-500">{cat.name}</p>
+                  <div className="flex flex-wrap gap-3">
+                    {courses
+                      .filter((course) => course.categoryId === cat.id)
+                      .map((course) => (
+                        <label key={course.id} className="flex items-center gap-1 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={form.courseIds.includes(course.id)}
+                            onChange={() => toggleCourse(course.id)}
+                          />
+                          {course.name}
+                        </label>
+                      ))}
+                  </div>
+                </div>
               ))}
             </div>
           </div>
