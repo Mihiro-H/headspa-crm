@@ -1,11 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { listAllStaff, updateStaff, createStaff, updateStaffProfile } from "./manage-staff";
 import { prisma } from "@/lib/db";
+import { auth } from "@/auth";
 
 vi.mock("@/lib/db", () => ({
   prisma: {
     staff: { findMany: vi.fn(), update: vi.fn(), create: vi.fn() },
+    adminStore: { findMany: vi.fn() },
   },
+}));
+
+vi.mock("@/auth", () => ({
+  auth: vi.fn(),
 }));
 
 describe("listAllStaff", () => {
@@ -13,7 +19,8 @@ describe("listAllStaff", () => {
     vi.clearAllMocks();
   });
 
-  it("returns all staff with store name, ordered by store then id", async () => {
+  it("returns all staff with store name, ordered by store then id, for an unrestricted (hq) admin", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "1", role: "hq" } } as never);
     vi.mocked(prisma.staff.findMany).mockResolvedValue([
       {
         id: 1,
@@ -39,6 +46,24 @@ describe("listAllStaff", () => {
       },
     ]);
     expect(prisma.staff.findMany).toHaveBeenCalledWith({
+      where: undefined,
+      include: { store: true },
+      orderBy: [{ storeId: "asc" }, { id: "asc" }],
+    });
+  });
+
+  it("filters to the restricted admin's own store ids", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "3", role: "manager" } } as never);
+    vi.mocked(prisma.adminStore.findMany).mockResolvedValue([
+      { storeId: 2 },
+      { storeId: 5 },
+    ] as never);
+    vi.mocked(prisma.staff.findMany).mockResolvedValue([] as never);
+
+    await listAllStaff();
+
+    expect(prisma.staff.findMany).toHaveBeenCalledWith({
+      where: { storeId: { in: [2, 5] } },
       include: { store: true },
       orderBy: [{ storeId: "asc" }, { id: "asc" }],
     });

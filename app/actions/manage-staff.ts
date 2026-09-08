@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
+import { getCurrentAdminStoreScope } from "./current-admin-scope";
 
 export interface ManagedStaff {
   id: number;
@@ -13,7 +14,10 @@ export interface ManagedStaff {
 }
 
 export async function listAllStaff(): Promise<ManagedStaff[]> {
+  const scope = await getCurrentAdminStoreScope();
+
   const staff = await prisma.staff.findMany({
+    where: scope.isUnrestricted ? undefined : { storeId: { in: scope.storeIds } },
     include: { store: true },
     orderBy: [{ storeId: "asc" }, { id: "asc" }],
   });
