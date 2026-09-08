@@ -12,8 +12,8 @@ export interface CampaignListItem {
   endDate: string;
   priority: number;
   isPublished: boolean;
-  targetStoreId: number | null;
-  targetStoreName: string;
+  storeIds: number[];
+  storeNames: string[];
   targetNames: string[];
   courseIds: number[];
   categoryIds: number[];
@@ -39,7 +39,7 @@ export async function listCampaigns(params?: ListCampaignsParams): Promise<ListC
     prisma.campaign.findMany({
       where,
       include: {
-        targetStore: true,
+        storeTargets: { include: { store: true } },
         courseTargets: { include: { course: true } },
         categoryTargets: { include: { category: true } },
       },
@@ -59,8 +59,9 @@ export async function listCampaigns(params?: ListCampaignsParams): Promise<ListC
     endDate: c.endDate.toISOString().slice(0, 10),
     priority: c.priority,
     isPublished: c.isPublished,
-    targetStoreId: c.targetStoreId,
-    targetStoreName: c.targetStore?.name ?? "全店舗",
+    storeIds: c.storeTargets.map((t) => t.storeId),
+    storeNames:
+      c.storeTargets.length > 0 ? c.storeTargets.map((t) => t.store.name) : ["全店舗"],
     targetNames: [
       ...c.courseTargets.map((t) => t.course.name),
       ...c.categoryTargets.map((t) => t.category.name),
@@ -79,7 +80,7 @@ export interface CreateCampaignParams {
   startDate: string;
   endDate: string;
   priority: number;
-  targetStoreId: number | null;
+  storeIds: number[];
   courseIds: number[];
   categoryIds: number[];
 }
@@ -95,8 +96,8 @@ export async function createCampaign(
       startDate: new Date(`${params.startDate}T00:00:00.000Z`),
       endDate: new Date(`${params.endDate}T00:00:00.000Z`),
       priority: params.priority,
-      targetStoreId: params.targetStoreId,
       isPublished: true,
+      storeTargets: { create: params.storeIds.map((storeId) => ({ storeId })) },
       courseTargets: { create: params.courseIds.map((courseId) => ({ courseId })) },
       categoryTargets: { create: params.categoryIds.map((categoryId) => ({ categoryId })) },
     },
@@ -113,7 +114,7 @@ export interface UpdateCampaignParams {
   startDate: string;
   endDate: string;
   priority: number;
-  targetStoreId: number | null;
+  storeIds: number[];
   courseIds: number[];
   categoryIds: number[];
 }
@@ -128,7 +129,10 @@ export async function updateCampaign(params: UpdateCampaignParams): Promise<void
       startDate: new Date(`${params.startDate}T00:00:00.000Z`),
       endDate: new Date(`${params.endDate}T00:00:00.000Z`),
       priority: params.priority,
-      targetStoreId: params.targetStoreId,
+      storeTargets: {
+        deleteMany: {},
+        create: params.storeIds.map((storeId) => ({ storeId })),
+      },
       courseTargets: {
         deleteMany: {},
         create: params.courseIds.map((courseId) => ({ courseId })),

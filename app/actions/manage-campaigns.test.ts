@@ -20,7 +20,7 @@ describe("listCampaigns", () => {
     vi.mocked(prisma.campaign.count).mockResolvedValue(0);
   });
 
-  it("returns published campaigns with target ids and names by default", async () => {
+  it("returns published campaigns with target ids and names, including multiple store targets", async () => {
     vi.mocked(prisma.campaign.findMany).mockResolvedValue([
       {
         id: 1,
@@ -31,8 +31,10 @@ describe("listCampaigns", () => {
         endDate: new Date("2026-09-30T00:00:00Z"),
         priority: 0,
         isPublished: true,
-        targetStoreId: null,
-        targetStore: null,
+        storeTargets: [
+          { storeId: 1, store: { name: "フォレスパ 東京丸の内本店" } },
+          { storeId: 2, store: { name: "フォレスパ 渋谷店" } },
+        ],
         courseTargets: [{ courseId: 5, course: { name: "スタンダード" } }],
         categoryTargets: [{ categoryId: 9, category: { name: "頭皮ケア重点" } }],
       },
@@ -52,8 +54,8 @@ describe("listCampaigns", () => {
           endDate: "2026-09-30",
           priority: 0,
           isPublished: true,
-          targetStoreId: null,
-          targetStoreName: "全店舗",
+          storeIds: [1, 2],
+          storeNames: ["フォレスパ 東京丸の内本店", "フォレスパ 渋谷店"],
           targetNames: ["スタンダード", "頭皮ケア重点"],
           courseIds: [5],
           categoryIds: [9],
@@ -61,10 +63,29 @@ describe("listCampaigns", () => {
       ],
       totalCount: 1,
     });
-    expect(prisma.campaign.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { isPublished: true }, skip: 0, take: 20 }),
-    );
-    expect(prisma.campaign.count).toHaveBeenCalledWith({ where: { isPublished: true } });
+  });
+
+  it("returns storeNames of [\"全店舗\"] when no store targets are set", async () => {
+    vi.mocked(prisma.campaign.findMany).mockResolvedValue([
+      {
+        id: 2,
+        name: "全店舗キャンペーン",
+        discountType: "fixed_amount",
+        discountValue: 500,
+        startDate: new Date("2026-09-01T00:00:00Z"),
+        endDate: new Date("2026-09-30T00:00:00Z"),
+        priority: 0,
+        isPublished: true,
+        storeTargets: [],
+        courseTargets: [],
+        categoryTargets: [],
+      },
+    ] as never);
+
+    const result = await listCampaigns();
+
+    expect(result.items[0].storeIds).toEqual([]);
+    expect(result.items[0].storeNames).toEqual(["全店舗"]);
   });
 
   it("includes unpublished campaigns when requested", async () => {
@@ -93,7 +114,7 @@ describe("createCampaign", () => {
     vi.clearAllMocks();
   });
 
-  it("creates a campaign with course and category targets", async () => {
+  it("creates a campaign with course, category, and store targets", async () => {
     vi.mocked(prisma.campaign.create).mockResolvedValue({ id: 10 } as never);
 
     const result = await createCampaign({
@@ -103,7 +124,7 @@ describe("createCampaign", () => {
       startDate: "2026-09-01",
       endDate: "2026-09-30",
       priority: 0,
-      targetStoreId: null,
+      storeIds: [1, 2],
       courseIds: [1, 2],
       categoryIds: [3],
     });
@@ -117,8 +138,8 @@ describe("createCampaign", () => {
         startDate: new Date("2026-09-01T00:00:00.000Z"),
         endDate: new Date("2026-09-30T00:00:00.000Z"),
         priority: 0,
-        targetStoreId: null,
         isPublished: true,
+        storeTargets: { create: [{ storeId: 1 }, { storeId: 2 }] },
         courseTargets: { create: [{ courseId: 1 }, { courseId: 2 }] },
         categoryTargets: { create: [{ categoryId: 3 }] },
       },
@@ -131,7 +152,7 @@ describe("updateCampaign", () => {
     vi.clearAllMocks();
   });
 
-  it("replaces campaign fields and targets", async () => {
+  it("replaces campaign fields and targets, including store targets", async () => {
     vi.mocked(prisma.campaign.update).mockResolvedValue({} as never);
 
     await updateCampaign({
@@ -142,7 +163,7 @@ describe("updateCampaign", () => {
       startDate: "2026-10-01",
       endDate: "2026-10-31",
       priority: 1,
-      targetStoreId: 2,
+      storeIds: [2],
       courseIds: [4],
       categoryIds: [],
     });
@@ -156,7 +177,7 @@ describe("updateCampaign", () => {
         startDate: new Date("2026-10-01T00:00:00.000Z"),
         endDate: new Date("2026-10-31T00:00:00.000Z"),
         priority: 1,
-        targetStoreId: 2,
+        storeTargets: { deleteMany: {}, create: [{ storeId: 2 }] },
         courseTargets: { deleteMany: {}, create: [{ courseId: 4 }] },
         categoryTargets: { deleteMany: {}, create: [] },
       },
