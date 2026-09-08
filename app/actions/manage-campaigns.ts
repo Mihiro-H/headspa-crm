@@ -19,7 +19,7 @@ export interface CampaignListItem {
   categoryIds: number[];
 }
 
-export const CAMPAIGN_PAGE_SIZE = 20;
+const CAMPAIGN_PAGE_SIZE = 20;
 
 export interface ListCampaignsParams {
   includeUnpublished?: boolean;

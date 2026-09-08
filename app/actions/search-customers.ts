@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/db";
 import { getCurrentAdminStoreScope } from "./current-admin-scope";
 
-export const CUSTOMER_PAGE_SIZE = 20;
+const CUSTOMER_PAGE_SIZE = 20;
 
 export type CustomerSortField = "id" | "visitCount" | "totalSpent" | "lastVisitDate";
 export type SortDirection = "asc" | "desc";

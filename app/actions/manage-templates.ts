@@ -78,7 +78,7 @@ export async function updateTemplate(params: UpdateTemplateParams): Promise<void
   });
 }
 
-export const TEMPLATE_PAGE_SIZE = 20;
+const TEMPLATE_PAGE_SIZE = 20;
 
 export interface ListTemplatesPageResult {
   items: TemplateListItem[];

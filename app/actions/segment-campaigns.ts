@@ -135,7 +135,7 @@ export interface SegmentCampaignListItem {
   sentAt: string | null;
 }
 
-export const SEGMENT_CAMPAIGN_PAGE_SIZE = 20;
+const SEGMENT_CAMPAIGN_PAGE_SIZE = 20;
 
 export interface ListSegmentCampaignsResult {
   items: SegmentCampaignListItem[];
