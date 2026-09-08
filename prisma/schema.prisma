@@ -501,3 +501,12 @@ model Notification {
   @@index([storeId, isRead])
   @@map("notifications")
 }
+
+model TermsOfService {
+  id       Int    @id @default(1)
+  bodyText String @map("body_text")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("terms_of_service")
+}
