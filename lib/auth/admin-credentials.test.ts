@@ -16,7 +16,7 @@ describe("authorizeAdmin", () => {
     vi.clearAllMocks();
   });
 
-  it("returns the admin with its role when credentials match", async () => {
+  it("returns the admin with its role and store ids when credentials match", async () => {
     const passwordHash = await hashPassword("admin-password");
     vi.mocked(prisma.admin.findUnique).mockResolvedValue({
       id: 1,
@@ -24,7 +24,8 @@ describe("authorizeAdmin", () => {
       name: "店長 佐藤",
       passwordHash,
       role: "manager",
-      storeId: 2,
+      isActive: true,
+      stores: [{ storeId: 2 }],
     } as never);
 
     const result = await authorizeAdmin({
@@ -37,7 +38,7 @@ describe("authorizeAdmin", () => {
       email: "manager@foresupa.jp",
       name: "店長 佐藤",
       role: "manager",
-      storeId: 2,
+      storeIds: [2],
     });
   });
 
@@ -60,7 +61,8 @@ describe("authorizeAdmin", () => {
       name: "店長 佐藤",
       passwordHash,
       role: "manager",
-      storeId: 2,
+      isActive: true,
+      stores: [{ storeId: 2 }],
     } as never);
 
     const result = await authorizeAdmin({
@@ -71,7 +73,7 @@ describe("authorizeAdmin", () => {
     expect(result).toBeNull();
   });
 
-  it("passes through a null storeId for HQ admins", async () => {
+  it("returns an empty storeIds array for HQ admins", async () => {
     const passwordHash = await hashPassword("hq-password");
     vi.mocked(prisma.admin.findUnique).mockResolvedValue({
       id: 2,
@@ -79,7 +81,8 @@ describe("authorizeAdmin", () => {
       name: "本部 鈴木",
       passwordHash,
       role: "hq",
-      storeId: null,
+      isActive: true,
+      stores: [],
     } as never);
 
     const result = await authorizeAdmin({
@@ -87,7 +90,46 @@ describe("authorizeAdmin", () => {
       password: "hq-password",
     });
 
-    expect(result?.storeId).toBeNull();
+    expect(result?.storeIds).toEqual([]);
     expect(result?.role).toBe("hq");
+  });
+
+  it("returns null when the admin has been archived", async () => {
+    const passwordHash = await hashPassword("admin-password");
+    vi.mocked(prisma.admin.findUnique).mockResolvedValue({
+      id: 1,
+      email: "manager@foresupa.jp",
+      name: "店長 佐藤",
+      passwordHash,
+      role: "manager",
+      isActive: false,
+      stores: [{ storeId: 2 }],
+    } as never);
+
+    const result = await authorizeAdmin({
+      email: "manager@foresupa.jp",
+      password: "admin-password",
+    });
+
+    expect(result).toBeNull();
+  });
+
+  it("returns null when the invite has not been accepted yet (passwordHash is null)", async () => {
+    vi.mocked(prisma.admin.findUnique).mockResolvedValue({
+      id: 3,
+      email: "pending@foresupa.jp",
+      name: "招待中 太郎",
+      passwordHash: null,
+      role: "staff",
+      isActive: true,
+      stores: [{ storeId: 1 }],
+    } as never);
+
+    const result = await authorizeAdmin({
+      email: "pending@foresupa.jp",
+      password: "anything",
+    });
+
+    expect(result).toBeNull();
   });
 });

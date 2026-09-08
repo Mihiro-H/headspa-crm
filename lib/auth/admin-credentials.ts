@@ -6,7 +6,7 @@ export interface AuthorizedAdmin {
   email: string;
   name: string;
   role: "hq" | "manager" | "staff";
-  storeId: number | null;
+  storeIds: number[];
 }
 
 export async function authorizeAdmin(credentials: {
@@ -15,9 +15,19 @@ export async function authorizeAdmin(credentials: {
 }): Promise<AuthorizedAdmin | null> {
   const admin = await prisma.admin.findUnique({
     where: { email: credentials.email },
+    include: { stores: true },
   });
 
   if (!admin) {
+    return null;
+  }
+
+  if (!admin.isActive) {
+    return null;
+  }
+
+  // 招待メール送信済みだがまだパスワードを設定していない管理者はログイン不可。
+  if (!admin.passwordHash) {
     return null;
   }
 
@@ -31,6 +41,6 @@ export async function authorizeAdmin(credentials: {
     email: admin.email,
     name: admin.name,
     role: admin.role,
-    storeId: admin.storeId,
+    storeIds: admin.stores.map((s) => s.storeId),
   };
 }
