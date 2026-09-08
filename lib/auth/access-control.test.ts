@@ -28,6 +28,12 @@ describe("resolveAccessDecision", () => {
     });
   });
 
+  it("always allows the /admin/accept-invite page itself", () => {
+    expect(resolveAccessDecision("/admin/accept-invite", undefined)).toEqual({
+      type: "allow",
+    });
+  });
+
   it("allows members into /mypage routes", () => {
     expect(resolveAccessDecision("/mypage", "member")).toEqual({ type: "allow" });
   });

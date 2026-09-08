@@ -6,8 +6,9 @@ export function resolveAccessDecision(
   pathname: string,
   role: string | undefined,
 ): AccessDecision {
-  const isAdminLoginPage = pathname.startsWith("/admin/login");
-  const isAdminArea = pathname.startsWith("/admin") && !isAdminLoginPage;
+  const isPublicAdminPage =
+    pathname.startsWith("/admin/login") || pathname.startsWith("/admin/accept-invite");
+  const isAdminArea = pathname.startsWith("/admin") && !isPublicAdminPage;
   const isMemberArea = pathname.startsWith("/mypage");
 
   if (isAdminArea && !(role && ADMIN_ROLES.has(role))) {
