@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getSalesReport, type SalesReport } from "@/app/actions/sales-report";
 import { listStores, type StoreListItem } from "@/app/actions/stores";
+import { getCurrentAdminStoreScope, type AdminStoreScope } from "@/app/actions/current-admin-scope";
 
 function toDateInputValue(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -39,11 +40,7 @@ function downloadCsv(details: SalesReport["details"], startDate: string, endDate
   URL.revokeObjectURL(url);
 }
 
-function BarList({
-  items,
-}: {
-  items: { label: string; total: number }[];
-}) {
+function BarList({ items }: { items: { label: string; total: number }[] }) {
   const max = Math.max(1, ...items.map((i) => i.total));
   return (
     <div className="flex flex-col gap-3">
@@ -73,10 +70,21 @@ export default function SalesReportPage() {
   const [storeId, setStoreId] = useState<number | null>(null);
   const [report, setReport] = useState<SalesReport | null>(null);
   const [loading, setLoading] = useState(false);
+  const [scope, setScope] = useState<AdminStoreScope>({ isUnrestricted: true, storeIds: [] });
 
   useEffect(() => {
     listStores().then(setStores);
+    getCurrentAdminStoreScope().then((s) => {
+      setScope(s);
+      if (!s.isUnrestricted && s.storeIds.length === 1) {
+        setStoreId(s.storeIds[0]);
+      }
+    });
   }, []);
+
+  const visibleStores = scope.isUnrestricted
+    ? stores
+    : stores.filter((s) => scope.storeIds.includes(s.id));
 
   async function handleSearch() {
     setLoading(true);
@@ -121,7 +129,7 @@ export default function SalesReportPage() {
             className="h-10 rounded-md border border-neutral-300 px-2"
           >
             <option value="">全店舗</option>
-            {stores.map((s) => (
+            {visibleStores.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
               </option>

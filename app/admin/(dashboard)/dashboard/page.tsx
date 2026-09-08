@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { listStores, type StoreListItem } from "@/app/actions/stores";
 import { getDashboardSummary, type DashboardSummary } from "@/app/actions/dashboard-summary";
+import { getCurrentAdminStoreScope, type AdminStoreScope } from "@/app/actions/current-admin-scope";
 
 function formatYen(amount: number): string {
   return `¥${amount.toLocaleString("ja-JP")}`;
@@ -12,14 +13,25 @@ export default function AdminDashboardPage() {
   const [stores, setStores] = useState<StoreListItem[]>([]);
   const [storeId, setStoreId] = useState<number | null>(null);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [scope, setScope] = useState<AdminStoreScope>({ isUnrestricted: true, storeIds: [] });
 
   useEffect(() => {
     listStores().then(setStores);
+    getCurrentAdminStoreScope().then((s) => {
+      setScope(s);
+      if (!s.isUnrestricted && s.storeIds.length === 1) {
+        setStoreId(s.storeIds[0]);
+      }
+    });
   }, []);
 
   useEffect(() => {
     getDashboardSummary(storeId).then(setSummary);
   }, [storeId]);
+
+  const visibleStores = scope.isUnrestricted
+    ? stores
+    : stores.filter((s) => scope.storeIds.includes(s.id));
 
   return (
     <div className="flex flex-col gap-6">
@@ -30,7 +42,7 @@ export default function AdminDashboardPage() {
           className="h-10 rounded-md border border-neutral-300 px-3 text-sm"
         >
           <option value="">全店舗</option>
-          {stores.map((s) => (
+          {visibleStores.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
             </option>
