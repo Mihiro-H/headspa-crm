@@ -10,11 +10,19 @@ export interface TabItem {
 
 export interface TabsProps {
   tabs: TabItem[];
+  activeKey?: string;
   defaultTabKey?: string;
+  onActiveKeyChange?: (key: string) => void;
 }
 
-export function Tabs({ tabs, defaultTabKey }: TabsProps) {
-  const [activeKey, setActiveKey] = useState(defaultTabKey ?? tabs[0]?.key);
+export function Tabs({ tabs, activeKey, defaultTabKey, onActiveKeyChange }: TabsProps) {
+  const [internalKey, setInternalKey] = useState(defaultTabKey ?? tabs[0]?.key);
+  const currentKey = activeKey ?? internalKey;
+
+  function selectKey(key: string) {
+    setInternalKey(key);
+    onActiveKeyChange?.(key);
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -23,10 +31,10 @@ export function Tabs({ tabs, defaultTabKey }: TabsProps) {
           <button
             key={tab.key}
             type="button"
-            onClick={() => setActiveKey(tab.key)}
-            aria-current={activeKey === tab.key ? "page" : undefined}
+            onClick={() => selectKey(tab.key)}
+            aria-current={currentKey === tab.key ? "page" : undefined}
             className={`px-4 py-2 text-sm ${
-              activeKey === tab.key
+              currentKey === tab.key
                 ? "border-b-2 border-primary-500 font-medium text-primary-700"
                 : "text-neutral-500"
             }`}
@@ -35,7 +43,7 @@ export function Tabs({ tabs, defaultTabKey }: TabsProps) {
           </button>
         ))}
       </div>
-      {tabs.find((tab) => tab.key === activeKey)?.content}
+      {tabs.find((tab) => tab.key === currentKey)?.content}
     </div>
   );
 }
