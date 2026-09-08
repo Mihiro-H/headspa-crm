@@ -3,7 +3,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Settings, ChevronDown, ChevronRight, Terminal, UserCog, ShieldCheck, FileText } from "lucide-react";
+import {
+  Settings,
+  ChevronDown,
+  ChevronRight,
+  Terminal,
+  UserCog,
+  ShieldCheck,
+  FileText,
+} from "lucide-react";
 
 const NAV_ICON_SIZE = 16;
 
@@ -18,6 +26,15 @@ export function SettingsNav() {
   const pathname = usePathname();
   const isInSettings = SETTINGS_NAV_ITEMS.some((item) => pathname.startsWith(item.href));
   const [open, setOpen] = useState(isInSettings);
+  // 遷移(deep link・戻る/進む等)でも設定配下に入った瞬間は自動展開する。
+  // レンダー中の条件付きsetStateはReact公式が推奨する「propの変化に応じたstate調整」パターン。
+  const [prevIsInSettings, setPrevIsInSettings] = useState(isInSettings);
+  if (isInSettings !== prevIsInSettings) {
+    setPrevIsInSettings(isInSettings);
+    if (isInSettings) {
+      setOpen(true);
+    }
+  }
 
   return (
     <div className="flex flex-col">
