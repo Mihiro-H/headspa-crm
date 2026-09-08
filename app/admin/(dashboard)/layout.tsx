@@ -12,9 +12,9 @@ import {
   Store,
   ChartColumn,
   Send,
-  Terminal,
 } from "lucide-react";
 import { AdminHeader } from "@/components/admin/admin-header";
+import { SettingsNav } from "@/components/admin/settings-nav";
 
 const NAV_ICON_SIZE = 16;
 
@@ -30,7 +30,6 @@ const NAV_ITEMS = [
   { href: "/admin/stores", label: "店舗管理", icon: Store },
   { href: "/admin/reports", label: "売上・月報レポート", icon: ChartColumn },
   { href: "/admin/segment-campaigns", label: "メール／LINE配信管理", icon: Send },
-  { href: "/admin/cron-logs", label: "Cronジョブ実行ログ", icon: Terminal },
 ] as const;
 
 export default function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
@@ -58,6 +57,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
               {label}
             </Link>
           ))}
+          <SettingsNav />
         </nav>
       </aside>
       <div className="flex flex-1 flex-col">

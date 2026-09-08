@@ -16,6 +16,9 @@ const PAGE_TITLES: Record<string, string> = {
   "/admin/reports": "売上・月報レポート",
   "/admin/segment-campaigns": "メール／LINE配信管理",
   "/admin/cron-logs": "Cronジョブ実行ログ",
+  "/admin/accounts": "アカウント管理",
+  "/admin/permissions": "権限設定",
+  "/admin/terms": "利用規約設定",
 };
 
 function resolvePageTitle(pathname: string): string {
