@@ -11,7 +11,7 @@ export interface AdminStoreScope {
 export async function getCurrentAdminStoreScope(): Promise<AdminStoreScope> {
   const session = await auth();
   if (!session?.user) {
-    return { isUnrestricted: true, storeIds: [] };
+    return { isUnrestricted: false, storeIds: [] };
   }
   if (session.user.role === "hq") {
     return { isUnrestricted: true, storeIds: [] };

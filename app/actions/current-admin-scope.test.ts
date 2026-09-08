@@ -40,11 +40,11 @@ describe("getCurrentAdminStoreScope", () => {
     expect(prisma.adminStore.findMany).toHaveBeenCalledWith({ where: { adminId: 3 } });
   });
 
-  it("returns unrestricted when there is no session", async () => {
+  it("returns a restricted empty scope when there is no session", async () => {
     vi.mocked(auth).mockResolvedValue(null);
 
     const result = await getCurrentAdminStoreScope();
 
-    expect(result).toEqual({ isUnrestricted: true, storeIds: [] });
+    expect(result).toEqual({ isUnrestricted: false, storeIds: [] });
   });
 });
