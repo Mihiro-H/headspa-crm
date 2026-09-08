@@ -34,7 +34,11 @@ function toSectionState(
   };
 }
 
-export default function AutoDeliveryPage() {
+export interface AutoDeliveryTabProps {
+  onNavigateToTemplates: () => void;
+}
+
+export function AutoDeliveryTab({ onNavigateToTemplates }: AutoDeliveryTabProps) {
   const [settings, setSettings] = useState<AutoDeliverySettingItem[]>([]);
   const [templates, setTemplates] = useState<TemplateListItem[]>([]);
   const [birthday, setBirthday] = useState<SectionState>(toSectionState(undefined, "month_start"));
@@ -120,9 +124,13 @@ export default function AutoDeliveryPage() {
             </option>
           ))}
         </select>
-        <a href="/admin/templates" className="text-sm text-primary-600 underline">
+        <button
+          type="button"
+          onClick={onNavigateToTemplates}
+          className="text-left text-sm text-primary-600 underline"
+        >
           ＋新しいテンプレートを作成する
-        </a>
+        </button>
         <button
           type="button"
           disabled={saving === type || !state.templateId}
