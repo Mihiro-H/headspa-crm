@@ -33,7 +33,7 @@ model Store {
 
   staff          Staff[]
   storeHolidays  StoreHoliday[]
-  admins         Admin[]
+  adminStores    AdminStore[]
   memberStores   MemberStore[]
   campaignStoreTargets CampaignStoreTarget[]
   reservations   Reservation[]
@@ -88,17 +88,31 @@ model StaffShift {
 
 model Admin {
   id           Int       @id @default(autoincrement()) @map("admin_id")
-  storeId      Int?      @map("store_id")
   name         String    @db.VarChar(100)
   email        String    @unique @db.VarChar(255)
-  passwordHash String    @map("password_hash") @db.VarChar(255)
+  passwordHash String?   @map("password_hash") @db.VarChar(255)
   role         AdminRole
+  isActive     Boolean   @default(true) @map("is_active")
+  inviteToken           String?   @unique @map("invite_token") @db.VarChar(255)
+  inviteTokenExpiresAt  DateTime? @map("invite_token_expires_at")
   createdAt    DateTime  @default(now()) @map("created_at")
 
-  store            Store?            @relation(fields: [storeId], references: [id])
+  stores            AdminStore[]
   segmentCampaigns SegmentCampaign[]
 
   @@map("admins")
+}
+
+model AdminStore {
+  id      Int @id @default(autoincrement())
+  adminId Int @map("admin_id")
+  storeId Int @map("store_id")
+
+  admin Admin @relation(fields: [adminId], references: [id])
+  store Store @relation(fields: [storeId], references: [id])
+
+  @@unique([adminId, storeId])
+  @@map("admin_stores")
 }
 
 enum Gender {
