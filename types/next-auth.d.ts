@@ -9,6 +9,8 @@ declare module "next-auth" {
     needsProfileCompletion?: boolean;
     pendingLineUserId?: string;
     pendingLineName?: string;
+    hiddenPageKeys?: string[];
+    viewOnlyPageKeys?: string[];
   }
 }
 
@@ -19,5 +21,7 @@ declare module "next-auth/jwt" {
     needsProfileCompletion?: boolean;
     pendingLineUserId?: string;
     pendingLineName?: string;
+    hiddenPageKeys?: string[];
+    viewOnlyPageKeys?: string[];
   }
 }
