@@ -22,9 +22,14 @@ const SETTINGS_NAV_ITEMS = [
   { href: "/admin/terms", label: "利用規約設定", icon: FileText },
 ] as const;
 
-export function SettingsNav() {
+export interface SettingsNavProps {
+  hiddenPageKeys?: string[];
+}
+
+export function SettingsNav({ hiddenPageKeys = [] }: SettingsNavProps) {
   const pathname = usePathname();
-  const isInSettings = SETTINGS_NAV_ITEMS.some((item) => pathname.startsWith(item.href));
+  const visibleItems = SETTINGS_NAV_ITEMS.filter((item) => !hiddenPageKeys.includes(item.href));
+  const isInSettings = visibleItems.some((item) => pathname.startsWith(item.href));
   const [open, setOpen] = useState(isInSettings);
   // 遷移(deep link・戻る/進む等)でも設定配下に入った瞬間は自動展開する。
   // レンダー中の条件付きsetStateはReact公式が推奨する「propの変化に応じたstate調整」パターン。
@@ -34,6 +39,10 @@ export function SettingsNav() {
     if (isInSettings) {
       setOpen(true);
     }
+  }
+
+  if (visibleItems.length === 0) {
+    return null;
   }
 
   return (
@@ -54,7 +63,7 @@ export function SettingsNav() {
       </button>
       {open && (
         <div className="ml-4 flex flex-col gap-1 border-l border-neutral-200 pl-2">
-          {SETTINGS_NAV_ITEMS.map(({ href, label, icon: Icon }) => (
+          {visibleItems.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}

@@ -13,8 +13,10 @@ import {
   ChartColumn,
   Send,
 } from "lucide-react";
+import { auth } from "@/auth";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { SettingsNav } from "@/components/admin/settings-nav";
+import { PermissionGate } from "@/components/admin/permission-gate";
 
 const NAV_ICON_SIZE = 16;
 
@@ -32,7 +34,12 @@ const NAV_ITEMS = [
   { href: "/admin/segment-campaigns", label: "メール／LINE配信管理", icon: Send },
 ] as const;
 
-export default function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth();
+  const hiddenPageKeys = session?.hiddenPageKeys ?? [];
+  const viewOnlyPageKeys = session?.viewOnlyPageKeys ?? [];
+  const visibleNavItems = NAV_ITEMS.filter((item) => !hiddenPageKeys.includes(item.href));
+
   return (
     <div className="flex min-h-screen">
       <aside className="w-60 shrink-0 border-r border-neutral-200 bg-neutral-0 p-4">
@@ -47,7 +54,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
           />
         </h1>
         <nav className="mt-6 flex flex-col gap-1">
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
+          {visibleNavItems.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
@@ -57,12 +64,14 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
               {label}
             </Link>
           ))}
-          <SettingsNav />
+          <SettingsNav hiddenPageKeys={hiddenPageKeys} />
         </nav>
       </aside>
       <div className="flex flex-1 flex-col">
         <AdminHeader />
-        <main className="flex-1 bg-neutral-50 p-6">{children}</main>
+        <main className="flex-1 bg-neutral-50 p-6">
+          <PermissionGate viewOnlyPageKeys={viewOnlyPageKeys}>{children}</PermissionGate>
+        </main>
       </div>
     </div>
   );
