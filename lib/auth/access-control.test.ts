@@ -48,4 +48,38 @@ describe("resolveAccessDecision", () => {
   it("allows any other route through untouched", () => {
     expect(resolveAccessDecision("/", undefined)).toEqual({ type: "allow" });
   });
+
+  it("redirects away from a page hidden for the current role", () => {
+    expect(
+      resolveAccessDecision("/admin/campaigns", "staff", ["/admin/campaigns"]),
+    ).toEqual({ type: "redirect", to: "/admin/dashboard" });
+  });
+
+  it("redirects away from a subpath of a hidden page", () => {
+    expect(
+      resolveAccessDecision("/admin/customers/5", "staff", ["/admin/customers"]),
+    ).toEqual({ type: "redirect", to: "/admin/dashboard" });
+  });
+
+  it("allows a page that is not in the hidden list", () => {
+    expect(
+      resolveAccessDecision("/admin/dashboard", "staff", ["/admin/campaigns"]),
+    ).toEqual({ type: "allow" });
+  });
+
+  it("never redirects away from the dashboard itself, even if listed as hidden", () => {
+    expect(
+      resolveAccessDecision("/admin/dashboard", "staff", ["/admin/dashboard"]),
+    ).toEqual({ type: "allow" });
+  });
+
+  it("treats an omitted hiddenPageKeys as no restrictions", () => {
+    expect(resolveAccessDecision("/admin/campaigns", "staff")).toEqual({ type: "allow" });
+  });
+
+  it("never redirects away from the permissions page itself, even if listed as hidden for hq", () => {
+    expect(
+      resolveAccessDecision("/admin/permissions", "hq", ["/admin/permissions"]),
+    ).toEqual({ type: "allow" });
+  });
 });

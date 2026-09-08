@@ -3,7 +3,11 @@ import { NextResponse } from "next/server";
 import { resolveAccessDecision } from "@/lib/auth/access-control";
 
 export default auth((req) => {
-  const decision = resolveAccessDecision(req.nextUrl.pathname, req.auth?.user?.role);
+  const decision = resolveAccessDecision(
+    req.nextUrl.pathname,
+    req.auth?.user?.role,
+    req.auth?.hiddenPageKeys ?? [],
+  );
 
   if (decision.type === "redirect") {
     return NextResponse.redirect(new URL(decision.to, req.url));
