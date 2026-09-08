@@ -1,11 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { getSalesReport } from "./sales-report";
+import { getSalesReport, getSalesReportForCurrentAdmin } from "./sales-report";
 import { prisma } from "@/lib/db";
+import { auth } from "@/auth";
 
 vi.mock("@/lib/db", () => ({
   prisma: {
     reservation: { findMany: vi.fn() },
+    adminStore: { findMany: vi.fn() },
   },
+}));
+
+vi.mock("@/auth", () => ({
+  auth: vi.fn(),
 }));
 
 describe("getSalesReport", () => {
@@ -149,7 +155,7 @@ describe("getSalesReport", () => {
     });
   });
 
-  it("omits the store filter when storeId is null (all stores)", async () => {
+  it("omits the store filter when storeId is null (all stores) and does not resolve any admin scope", async () => {
     vi.mocked(prisma.reservation.findMany).mockResolvedValue([] as never);
 
     await getSalesReport({ startDate: "2026-09-01", endDate: "2026-09-30", storeId: null });
@@ -170,35 +176,8 @@ describe("getSalesReport", () => {
       },
       orderBy: { reservationDate: "asc" },
     });
-  });
-
-  it("filters to allowedStoreIds when storeId is null but allowedStoreIds is given", async () => {
-    vi.mocked(prisma.reservation.findMany).mockResolvedValue([] as never);
-
-    await getSalesReport({
-      startDate: "2026-09-01",
-      endDate: "2026-09-30",
-      storeId: null,
-      allowedStoreIds: [2, 5],
-    });
-
-    expect(prisma.reservation.findMany).toHaveBeenNthCalledWith(1, {
-      where: {
-        reservationDate: {
-          gte: new Date("2026-09-01T00:00:00.000Z"),
-          lte: new Date("2026-09-30T00:00:00.000Z"),
-        },
-        status: { in: ["confirmed", "completed"] },
-        storeId: { in: [2, 5] },
-      },
-      include: {
-        store: true,
-        member: true,
-        staff: true,
-        items: { include: { course: true } },
-      },
-      orderBy: { reservationDate: "asc" },
-    });
+    // 信頼済み呼び出し専用（cronなど）のため、認証セッションを解決してはいけない。
+    expect(auth).not.toHaveBeenCalled();
   });
 
   it("returns zeroed summary and empty breakdowns when there are no reservations in the period", async () => {
@@ -222,5 +201,139 @@ describe("getSalesReport", () => {
     expect(result.courseSales).toEqual([]);
     expect(result.staffSales).toEqual([]);
     expect(result.details).toEqual([]);
+  });
+});
+
+describe("getSalesReportForCurrentAdmin", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("omits the store filter when storeId is null for an unrestricted (hq) admin", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "1", role: "hq" } } as never);
+    vi.mocked(prisma.reservation.findMany).mockResolvedValue([] as never);
+
+    await getSalesReportForCurrentAdmin({
+      startDate: "2026-09-01",
+      endDate: "2026-09-30",
+      storeId: null,
+    });
+
+    expect(prisma.reservation.findMany).toHaveBeenNthCalledWith(1, {
+      where: {
+        reservationDate: {
+          gte: new Date("2026-09-01T00:00:00.000Z"),
+          lte: new Date("2026-09-30T00:00:00.000Z"),
+        },
+        status: { in: ["confirmed", "completed"] },
+      },
+      include: {
+        store: true,
+        member: true,
+        staff: true,
+        items: { include: { course: true } },
+      },
+      orderBy: { reservationDate: "asc" },
+    });
+  });
+
+  it("filters to the restricted admin's own store ids when storeId is null", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "3", role: "manager" } } as never);
+    vi.mocked(prisma.adminStore.findMany).mockResolvedValue([
+      { storeId: 2 },
+      { storeId: 5 },
+    ] as never);
+    vi.mocked(prisma.reservation.findMany).mockResolvedValue([] as never);
+
+    await getSalesReportForCurrentAdmin({
+      startDate: "2026-09-01",
+      endDate: "2026-09-30",
+      storeId: null,
+    });
+
+    expect(prisma.reservation.findMany).toHaveBeenNthCalledWith(1, {
+      where: {
+        reservationDate: {
+          gte: new Date("2026-09-01T00:00:00.000Z"),
+          lte: new Date("2026-09-30T00:00:00.000Z"),
+        },
+        status: { in: ["confirmed", "completed"] },
+        storeId: { in: [2, 5] },
+      },
+      include: {
+        store: true,
+        member: true,
+        staff: true,
+        items: { include: { course: true } },
+      },
+      orderBy: { reservationDate: "asc" },
+    });
+  });
+
+  it("ignores an out-of-scope storeId argument and falls back to the admin's own scope", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "3", role: "manager" } } as never);
+    vi.mocked(prisma.adminStore.findMany).mockResolvedValue([
+      { storeId: 2 },
+      { storeId: 5 },
+    ] as never);
+    vi.mocked(prisma.reservation.findMany).mockResolvedValue([] as never);
+
+    // 店舗9はこの管理者のスコープ外なので、クライアントから渡されても無視される。
+    await getSalesReportForCurrentAdmin({
+      startDate: "2026-09-01",
+      endDate: "2026-09-30",
+      storeId: 9,
+    });
+
+    expect(prisma.reservation.findMany).toHaveBeenNthCalledWith(1, {
+      where: {
+        reservationDate: {
+          gte: new Date("2026-09-01T00:00:00.000Z"),
+          lte: new Date("2026-09-30T00:00:00.000Z"),
+        },
+        status: { in: ["confirmed", "completed"] },
+        storeId: { in: [2, 5] },
+      },
+      include: {
+        store: true,
+        member: true,
+        staff: true,
+        items: { include: { course: true } },
+      },
+      orderBy: { reservationDate: "asc" },
+    });
+  });
+
+  it("honors an in-scope storeId argument for a restricted admin", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "3", role: "manager" } } as never);
+    vi.mocked(prisma.adminStore.findMany).mockResolvedValue([
+      { storeId: 2 },
+      { storeId: 5 },
+    ] as never);
+    vi.mocked(prisma.reservation.findMany).mockResolvedValue([] as never);
+
+    await getSalesReportForCurrentAdmin({
+      startDate: "2026-09-01",
+      endDate: "2026-09-30",
+      storeId: 5,
+    });
+
+    expect(prisma.reservation.findMany).toHaveBeenNthCalledWith(1, {
+      where: {
+        reservationDate: {
+          gte: new Date("2026-09-01T00:00:00.000Z"),
+          lte: new Date("2026-09-30T00:00:00.000Z"),
+        },
+        status: { in: ["confirmed", "completed"] },
+        storeId: 5,
+      },
+      include: {
+        store: true,
+        member: true,
+        staff: true,
+        items: { include: { course: true } },
+      },
+      orderBy: { reservationDate: "asc" },
+    });
   });
 });

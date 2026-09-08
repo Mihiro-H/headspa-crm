@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
+import { getCurrentAdminStoreScope } from "./current-admin-scope";
 
 const REVENUE_STATUSES = ["confirmed", "completed"] as const;
 
@@ -50,10 +51,16 @@ export interface GetSalesReportParams {
   startDate: string;
   endDate: string;
   storeId: number | null;
+}
+
+interface BuildSalesReportParams extends GetSalesReportParams {
   allowedStoreIds?: number[];
 }
 
-export async function getSalesReport(params: GetSalesReportParams): Promise<SalesReport> {
+// 内部専用のレポート構築処理。allowedStoreIds はクライアントから直接渡させず、
+// getSalesReportForCurrentAdmin がサーバー側で解決したスコープからのみ渡す
+// （このヘルパーは非exportのためサーバーアクションとして外部から直接呼び出せない）。
+async function buildSalesReport(params: BuildSalesReportParams): Promise<SalesReport> {
   const start = new Date(`${params.startDate}T00:00:00.000Z`);
   const end = new Date(`${params.endDate}T00:00:00.000Z`);
 
@@ -162,4 +169,30 @@ export async function getSalesReport(params: GetSalesReportParams): Promise<Sale
     staffSales,
     details,
   };
+}
+
+// cron等の信頼済みサーバーサイド呼び出し専用。パラメータをそのまま信頼するため、
+// クライアントから直接呼び出させてはいけない（管理画面からは
+// getSalesReportForCurrentAdmin を使うこと）。
+export async function getSalesReport(params: GetSalesReportParams): Promise<SalesReport> {
+  return buildSalesReport(params);
+}
+
+// 管理画面向け。呼び出し元の店舗スコープをサーバー側で解決し、
+// クライアントから渡された storeId がスコープ外なら無視する。
+export async function getSalesReportForCurrentAdmin(
+  params: GetSalesReportParams,
+): Promise<SalesReport> {
+  const scope = await getCurrentAdminStoreScope();
+
+  const effectiveStoreId =
+    params.storeId && (scope.isUnrestricted || scope.storeIds.includes(params.storeId))
+      ? params.storeId
+      : null;
+
+  return buildSalesReport({
+    ...params,
+    storeId: effectiveStoreId,
+    allowedStoreIds: scope.isUnrestricted ? undefined : scope.storeIds,
+  });
 }

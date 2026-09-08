@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getSalesReport, type SalesReport } from "@/app/actions/sales-report";
+import { getSalesReportForCurrentAdmin, type SalesReport } from "@/app/actions/sales-report";
 import { listStores, type StoreListItem } from "@/app/actions/stores";
 import { getCurrentAdminStoreScope, type AdminStoreScope } from "@/app/actions/current-admin-scope";
 
@@ -88,12 +88,7 @@ export default function SalesReportPage() {
 
   async function handleSearch() {
     setLoading(true);
-    const result = await getSalesReport({
-      startDate,
-      endDate,
-      storeId,
-      allowedStoreIds: scope.isUnrestricted ? undefined : scope.storeIds,
-    });
+    const result = await getSalesReportForCurrentAdmin({ startDate, endDate, storeId });
     setReport(result);
     setLoading(false);
   }
