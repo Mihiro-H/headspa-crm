@@ -23,8 +23,12 @@ export async function listCoursesForCategory(
     where: { categoryId, isPublished: true },
     orderBy: { sortOrder: "asc" },
     include: {
-      campaignTargets: { include: { campaign: true } },
-      category: { include: { campaignTargets: { include: { campaign: true } } } },
+      campaignTargets: { include: { campaign: { include: { storeTargets: true } } } },
+      category: {
+        include: {
+          campaignTargets: { include: { campaign: { include: { storeTargets: true } } } },
+        },
+      },
     },
   });
 

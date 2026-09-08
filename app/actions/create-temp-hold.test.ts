@@ -87,7 +87,7 @@ describe("createTempHoldReservation", () => {
             startDate: new Date("2000-01-01T00:00:00Z"),
             endDate: new Date("2999-01-01T00:00:00Z"),
             isPublished: true,
-            targetStoreId: null,
+            storeTargets: [],
           },
         },
       ],

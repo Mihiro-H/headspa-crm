@@ -28,8 +28,12 @@ export async function createTempHoldReservation(
     prisma.course.findUniqueOrThrow({
       where: { id: params.courseId },
       include: {
-        campaignTargets: { include: { campaign: true } },
-        category: { include: { campaignTargets: { include: { campaign: true } } } },
+        campaignTargets: { include: { campaign: { include: { storeTargets: true } } } },
+        category: {
+          include: {
+            campaignTargets: { include: { campaign: { include: { storeTargets: true } } } },
+          },
+        },
       },
     }),
     prisma.option.findMany({ where: { id: { in: params.optionIds } } }),
