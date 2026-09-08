@@ -22,7 +22,7 @@ const PAGE_SIZE = 20;
 
 const EMPTY_FORM = { type: "segment" as DeliveryTemplateType, name: "", subject: "", bodyText: "" };
 
-export default function TemplatesPage() {
+export function TemplatesTab() {
   const [templates, setTemplates] = useState<TemplateListItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
