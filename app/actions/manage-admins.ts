@@ -75,7 +75,7 @@ export type CreateAdminResult =
 
 export async function createAdmin(params: CreateAdminParams): Promise<CreateAdminResult> {
   const session = await auth();
-  if (!session?.user || !ADMIN_ROLES.has(session.user.role)) {
+  if (!session?.user || session.user.role !== "hq") {
     throw new Error("unauthorized");
   }
 
@@ -116,7 +116,7 @@ export type ResendInviteResult =
 // Brevo未設定期間中に送信できなかった招待、または期限切れになった招待をやり直すための再送機能。
 export async function resendAdminInvite(adminId: number): Promise<ResendInviteResult> {
   const session = await auth();
-  if (!session?.user || !ADMIN_ROLES.has(session.user.role)) {
+  if (!session?.user || session.user.role !== "hq") {
     throw new Error("unauthorized");
   }
 
@@ -153,7 +153,7 @@ export interface UpdateAdminParams {
 
 export async function updateAdmin(params: UpdateAdminParams): Promise<void> {
   const session = await auth();
-  if (!session?.user || !ADMIN_ROLES.has(session.user.role)) {
+  if (!session?.user || session.user.role !== "hq") {
     throw new Error("unauthorized");
   }
 
@@ -169,7 +169,7 @@ export async function updateAdmin(params: UpdateAdminParams): Promise<void> {
 
 export async function deactivateAdmin(adminId: number): Promise<void> {
   const session = await auth();
-  if (!session?.user || !ADMIN_ROLES.has(session.user.role)) {
+  if (!session?.user || session.user.role !== "hq") {
     throw new Error("unauthorized");
   }
 
@@ -178,7 +178,7 @@ export async function deactivateAdmin(adminId: number): Promise<void> {
 
 export async function reactivateAdmin(adminId: number): Promise<void> {
   const session = await auth();
-  if (!session?.user || !ADMIN_ROLES.has(session.user.role)) {
+  if (!session?.user || session.user.role !== "hq") {
     throw new Error("unauthorized");
   }
 

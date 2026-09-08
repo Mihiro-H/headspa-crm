@@ -106,6 +106,20 @@ describe("createAdmin", () => {
     expect(prisma.admin.create).not.toHaveBeenCalled();
   });
 
+  it("rejects a manager-role session (only hq may create admins)", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "2", role: "manager" } } as never);
+
+    await expect(
+      createAdmin({
+        name: "店長 田中",
+        email: "tanaka@foresupa.jp",
+        role: "manager",
+        storeIds: [1],
+      }),
+    ).rejects.toThrow("unauthorized");
+    expect(prisma.admin.create).not.toHaveBeenCalled();
+  });
+
   it("creates an admin with no password and sends an invite email", async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: "9", role: "hq" } } as never);
     vi.mocked(prisma.admin.findUnique).mockResolvedValue(null);
@@ -188,6 +202,14 @@ describe("resendAdminInvite", () => {
     expect(prisma.admin.update).not.toHaveBeenCalled();
   });
 
+  it("rejects a manager-role session (only hq may resend invites)", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "2", role: "manager" } } as never);
+
+    await expect(resendAdminInvite(2)).rejects.toThrow("unauthorized");
+    expect(prisma.admin.findUnique).not.toHaveBeenCalled();
+    expect(prisma.admin.update).not.toHaveBeenCalled();
+  });
+
   it("issues a new token and resends the invite email for a pending admin", async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: "9", role: "hq" } } as never);
     vi.mocked(prisma.admin.findUnique).mockResolvedValue({
@@ -254,6 +276,15 @@ describe("updateAdmin", () => {
     expect(prisma.admin.update).not.toHaveBeenCalled();
   });
 
+  it("rejects a manager-role session (only hq may update admins)", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "2", role: "manager" } } as never);
+
+    await expect(
+      updateAdmin({ adminId: 1, name: "店長 佐藤（改姓）", role: "manager", storeIds: [3] }),
+    ).rejects.toThrow("unauthorized");
+    expect(prisma.admin.update).not.toHaveBeenCalled();
+  });
+
   it("updates name, role, and replaces store targets", async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: "9", role: "hq" } } as never);
     vi.mocked(prisma.admin.update).mockResolvedValue({} as never);
@@ -283,6 +314,13 @@ describe("deactivateAdmin", () => {
     expect(prisma.admin.update).not.toHaveBeenCalled();
   });
 
+  it("rejects a manager-role session (only hq may deactivate admins)", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "2", role: "manager" } } as never);
+
+    await expect(deactivateAdmin(1)).rejects.toThrow("unauthorized");
+    expect(prisma.admin.update).not.toHaveBeenCalled();
+  });
+
   it("sets isActive to false", async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: "9", role: "hq" } } as never);
     vi.mocked(prisma.admin.update).mockResolvedValue({} as never);
@@ -300,6 +338,13 @@ describe("reactivateAdmin", () => {
 
   it("rejects a non-admin session", async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: "1", role: "member" } } as never);
+
+    await expect(reactivateAdmin(1)).rejects.toThrow("unauthorized");
+    expect(prisma.admin.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects a manager-role session (only hq may reactivate admins)", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "2", role: "manager" } } as never);
 
     await expect(reactivateAdmin(1)).rejects.toThrow("unauthorized");
     expect(prisma.admin.update).not.toHaveBeenCalled();
