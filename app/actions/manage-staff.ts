@@ -60,3 +60,17 @@ export async function createStaff(params: CreateStaffParams): Promise<{ staffId:
   });
   return { staffId: staff.id };
 }
+
+export interface UpdateStaffProfileParams {
+  staffId: number;
+  name: string;
+  bio: string | null;
+  storeId: number;
+}
+
+export async function updateStaffProfile(params: UpdateStaffProfileParams): Promise<void> {
+  await prisma.staff.update({
+    where: { id: params.staffId },
+    data: { name: params.name, bio: params.bio, storeId: params.storeId },
+  });
+}

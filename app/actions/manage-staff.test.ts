@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { listAllStaff, updateStaff, createStaff } from "./manage-staff";
+import { listAllStaff, updateStaff, createStaff, updateStaffProfile } from "./manage-staff";
 import { prisma } from "@/lib/db";
 
 vi.mock("@/lib/db", () => ({
@@ -85,6 +85,34 @@ describe("createStaff", () => {
         bio: "得意メニュー：アロマ",
         nominationFee: 1200,
       },
+    });
+  });
+});
+
+describe("updateStaffProfile", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("updates name, bio, and storeId", async () => {
+    vi.mocked(prisma.staff.update).mockResolvedValue({} as never);
+
+    await updateStaffProfile({ staffId: 1, name: "山田花子", bio: "頭皮ケア歴10年", storeId: 2 });
+
+    expect(prisma.staff.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { name: "山田花子", bio: "頭皮ケア歴10年", storeId: 2 },
+    });
+  });
+
+  it("allows clearing bio to null", async () => {
+    vi.mocked(prisma.staff.update).mockResolvedValue({} as never);
+
+    await updateStaffProfile({ staffId: 1, name: "山田花子", bio: null, storeId: 2 });
+
+    expect(prisma.staff.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { name: "山田花子", bio: null, storeId: 2 },
     });
   });
 });
