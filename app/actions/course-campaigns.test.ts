@@ -16,7 +16,7 @@ describe("resolveCourseCampaigns", () => {
     expect(resolveCourseCampaigns(course(), 1, now)).toEqual([]);
   });
 
-  it("includes an active store-wide course-level campaign", () => {
+  it("includes an active store-wide course-level campaign (no store targets)", () => {
     const result = resolveCourseCampaigns(
       course({
         campaignTargets: [
@@ -29,7 +29,7 @@ describe("resolveCourseCampaigns", () => {
               startDate: new Date("2026-09-01T00:00:00Z"),
               endDate: new Date("2026-09-30T00:00:00Z"),
               isPublished: true,
-              targetStoreId: null,
+              storeTargets: [],
             },
           },
         ],
@@ -43,7 +43,7 @@ describe("resolveCourseCampaigns", () => {
     ]);
   });
 
-  it("excludes a campaign scoped to a different store", () => {
+  it("includes a campaign whose store targets include the requested store", () => {
     const result = resolveCourseCampaigns(
       course({
         campaignTargets: [
@@ -56,7 +56,34 @@ describe("resolveCourseCampaigns", () => {
               startDate: new Date("2026-09-01T00:00:00Z"),
               endDate: new Date("2026-09-30T00:00:00Z"),
               isPublished: true,
-              targetStoreId: 2,
+              storeTargets: [{ storeId: 1 }, { storeId: 3 }],
+            },
+          },
+        ],
+      }),
+      1,
+      now,
+    );
+
+    expect(result).toEqual([
+      { campaignId: 5, priority: 0, discountType: "percentage", discountValue: 10 },
+    ]);
+  });
+
+  it("excludes a campaign whose store targets do not include the requested store", () => {
+    const result = resolveCourseCampaigns(
+      course({
+        campaignTargets: [
+          {
+            campaign: {
+              id: 5,
+              priority: 0,
+              discountType: "percentage",
+              discountValue: 10,
+              startDate: new Date("2026-09-01T00:00:00Z"),
+              endDate: new Date("2026-09-30T00:00:00Z"),
+              isPublished: true,
+              storeTargets: [{ storeId: 2 }],
             },
           },
         ],
@@ -82,7 +109,7 @@ describe("resolveCourseCampaigns", () => {
                 startDate: new Date("2026-09-01T00:00:00Z"),
                 endDate: new Date("2026-09-30T00:00:00Z"),
                 isPublished: true,
-                targetStoreId: null,
+                storeTargets: [],
               },
             },
           ],
@@ -110,7 +137,7 @@ describe("resolveCourseCampaigns", () => {
               startDate: new Date("2026-10-01T00:00:00Z"),
               endDate: new Date("2026-10-31T00:00:00Z"),
               isPublished: true,
-              targetStoreId: null,
+              storeTargets: [],
             },
           },
         ],

@@ -10,7 +10,7 @@ export interface RawCampaign {
   startDate: Date;
   endDate: Date;
   isPublished: boolean;
-  targetStoreId: number | null;
+  storeTargets: { storeId: number }[];
 }
 
 export interface CourseWithCampaignTargets {
@@ -18,7 +18,7 @@ export interface CourseWithCampaignTargets {
   category: { campaignTargets: { campaign: RawCampaign }[] };
 }
 
-function toActiveCampaignRow(c: RawCampaign): ActiveCampaignRow & { targetStoreId: number | null } {
+function toActiveCampaignRow(c: RawCampaign): ActiveCampaignRow & { storeTargetIds: number[] } {
   return {
     campaignId: c.id,
     priority: c.priority,
@@ -27,7 +27,7 @@ function toActiveCampaignRow(c: RawCampaign): ActiveCampaignRow & { targetStoreI
     startDate: c.startDate,
     endDate: c.endDate,
     isPublished: c.isPublished,
-    targetStoreId: c.targetStoreId,
+    storeTargetIds: c.storeTargets.map((t) => t.storeId),
   };
 }
 
@@ -46,7 +46,7 @@ export function resolveCourseCampaigns(
   const categoryCampaigns = course.category.campaignTargets.map((t) => t.campaign);
   const eligible = [...courseCampaigns, ...categoryCampaigns]
     .map(toActiveCampaignRow)
-    .filter((c) => c.targetStoreId === null || c.targetStoreId === storeId);
+    .filter((c) => c.storeTargetIds.length === 0 || c.storeTargetIds.includes(storeId));
 
   return filterActiveCampaigns(eligible, now);
 }
