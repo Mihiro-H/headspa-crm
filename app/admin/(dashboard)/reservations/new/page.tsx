@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { searchCustomers, type CustomerListItem } from "@/app/actions/search-customers";
 import { listStores, type StoreListItem } from "@/app/actions/stores";
+import { getCurrentAdminStoreScope, type AdminStoreScope } from "@/app/actions/current-admin-scope";
 import { listCourseCategories, type CourseCategoryListItem } from "@/app/actions/course-categories";
 import { listCoursesForCategory, type CourseListItem } from "@/app/actions/courses";
 import { listStaffForStore, type StaffListItem } from "@/app/actions/staff";
@@ -19,6 +20,7 @@ export default function AdminNewPhoneReservationPage() {
 
   const [stores, setStores] = useState<StoreListItem[]>([]);
   const [storeId, setStoreId] = useState<number | null>(null);
+  const [scope, setScope] = useState<AdminStoreScope>({ isUnrestricted: true, storeIds: [] });
 
   const [categories, setCategories] = useState<CourseCategoryListItem[]>([]);
   const [categoryId, setCategoryId] = useState<number | null>(null);
@@ -47,6 +49,12 @@ export default function AdminNewPhoneReservationPage() {
   useEffect(() => {
     listStores().then(setStores);
     listCourseCategories().then(setCategories);
+    getCurrentAdminStoreScope().then((s) => {
+      setScope(s);
+      if (!s.isUnrestricted && s.storeIds.length === 1) {
+        setStoreId(s.storeIds[0]);
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -93,6 +101,10 @@ export default function AdminNewPhoneReservationPage() {
     router.push(`/admin/reservations/${result.reservationId}`);
   }
 
+  const visibleStores = scope.isUnrestricted
+    ? stores
+    : stores.filter((s) => scope.storeIds.includes(s.id));
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
@@ -136,7 +148,7 @@ export default function AdminNewPhoneReservationPage() {
           className="h-10 rounded-md border border-neutral-300 px-3 text-sm"
         >
           <option value="">選択してください</option>
-          {stores.map((s) => (
+          {visibleStores.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
             </option>

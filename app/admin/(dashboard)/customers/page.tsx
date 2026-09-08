@@ -18,6 +18,7 @@ import {
 } from "@/app/actions/manage-customers";
 import { listCustomerStatuses, type CustomerStatusItem } from "@/app/actions/customer-statuses";
 import { listStores, type StoreListItem } from "@/app/actions/stores";
+import { getCurrentAdminStoreScope, type AdminStoreScope } from "@/app/actions/current-admin-scope";
 import { Modal } from "@/components/ui/modal";
 import { Pagination } from "@/components/ui/pagination";
 
@@ -56,6 +57,7 @@ export default function AdminCustomersPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [statuses, setStatuses] = useState<CustomerStatusItem[]>([]);
   const [stores, setStores] = useState<StoreListItem[]>([]);
+  const [scope, setScope] = useState<AdminStoreScope>({ isUnrestricted: true, storeIds: [] });
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM);
@@ -75,6 +77,7 @@ export default function AdminCustomersPage() {
       sortBy,
       sortDirection,
       page,
+      storeIds: scope.isUnrestricted ? undefined : scope.storeIds,
     }).then((result) => {
       setCustomers(result.items);
       setTotalCount(result.totalCount);
@@ -84,11 +87,12 @@ export default function AdminCustomersPage() {
   useEffect(() => {
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, phone, statusIds, includeInactive, sortBy, sortDirection, page]);
+  }, [name, phone, statusIds, includeInactive, sortBy, sortDirection, page, scope]);
 
   useEffect(() => {
     listCustomerStatuses().then(setStatuses);
     listStores().then(setStores);
+    getCurrentAdminStoreScope().then(setScope);
   }, []);
 
   function toggleStatus(statusId: number) {
@@ -157,7 +161,11 @@ export default function AdminCustomersPage() {
   async function handleSaveEdit() {
     if (!editing) return;
     setSaving(true);
-    await updateCustomerByAdmin({ memberId: editing.id, name: editForm.name, phone: editForm.phone });
+    await updateCustomerByAdmin({
+      memberId: editing.id,
+      name: editForm.name,
+      phone: editForm.phone,
+    });
     // 以下が失敗すると氏名・電話番号のみ更新され利用店舗が変わらない状態になり得る（トランザクション未対応の既知のトレードオフ）。
     await updateCustomerStores(editing.id, editForm.storeIds);
     setSaving(false);
@@ -251,7 +259,13 @@ export default function AdminCustomersPage() {
                 <th
                   key={field}
                   className="p-3"
-                  aria-sort={sortBy === field ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
+                  aria-sort={
+                    sortBy === field
+                      ? sortDirection === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : "none"
+                  }
                 >
                   <button
                     type="button"
@@ -270,7 +284,13 @@ export default function AdminCustomersPage() {
                 <th
                   key={field}
                   className="p-3"
-                  aria-sort={sortBy === field ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
+                  aria-sort={
+                    sortBy === field
+                      ? sortDirection === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : "none"
+                  }
                 >
                   <button
                     type="button"
@@ -351,7 +371,9 @@ export default function AdminCustomersPage() {
         )}
       </div>
 
-      <p className="text-center text-xs text-neutral-500">{totalCount}件中 {customers.length}件を表示</p>
+      <p className="text-center text-xs text-neutral-500">
+        {totalCount}件中 {customers.length}件を表示
+      </p>
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
       <Modal open={createOpen} onOpenChange={setCreateOpen} title="新規顧客登録">
@@ -397,9 +419,7 @@ export default function AdminCustomersPage() {
             </select>
             <select
               value={createForm.birthMonth}
-              onChange={(e) =>
-                setCreateForm({ ...createForm, birthMonth: Number(e.target.value) })
-              }
+              onChange={(e) => setCreateForm({ ...createForm, birthMonth: Number(e.target.value) })}
               className="h-10 rounded-md border border-neutral-300 px-2"
             >
               {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
