@@ -9,6 +9,7 @@ import {
 } from "./manage-admins";
 import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/delivery/send-email";
+import { auth } from "@/auth";
 
 vi.mock("@/lib/db", () => ({
   prisma: {
@@ -20,12 +21,24 @@ vi.mock("@/lib/delivery/send-email", () => ({
   sendEmail: vi.fn(),
 }));
 
+vi.mock("@/auth", () => ({
+  auth: vi.fn(),
+}));
+
 describe("listAdmins", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
+  it("rejects a non-admin session", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "1", role: "member" } } as never);
+
+    await expect(listAdmins()).rejects.toThrow("unauthorized");
+    expect(prisma.admin.findMany).not.toHaveBeenCalled();
+  });
+
   it("returns admins with their store ids, names, and pending-invite status", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "9", role: "hq" } } as never);
     vi.mocked(prisma.admin.findMany).mockResolvedValue([
       {
         id: 1,
@@ -79,7 +92,22 @@ describe("createAdmin", () => {
     vi.clearAllMocks();
   });
 
+  it("rejects a non-admin session", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "1", role: "member" } } as never);
+
+    await expect(
+      createAdmin({
+        name: "店長 田中",
+        email: "tanaka@foresupa.jp",
+        role: "manager",
+        storeIds: [1],
+      }),
+    ).rejects.toThrow("unauthorized");
+    expect(prisma.admin.create).not.toHaveBeenCalled();
+  });
+
   it("creates an admin with no password and sends an invite email", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "9", role: "hq" } } as never);
     vi.mocked(prisma.admin.findUnique).mockResolvedValue(null);
     vi.mocked(prisma.admin.create).mockResolvedValue({ id: 10 } as never);
     vi.mocked(sendEmail).mockResolvedValue({ status: "sent" });
@@ -112,6 +140,7 @@ describe("createAdmin", () => {
   });
 
   it("returns email_taken when the email is already registered", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "9", role: "hq" } } as never);
     vi.mocked(prisma.admin.findUnique).mockResolvedValue({ id: 1 } as never);
 
     const result = await createAdmin({
@@ -126,6 +155,7 @@ describe("createAdmin", () => {
   });
 
   it("still creates the admin and reports not_configured when Brevo is not set up", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "9", role: "hq" } } as never);
     vi.mocked(prisma.admin.findUnique).mockResolvedValue(null);
     vi.mocked(prisma.admin.create).mockResolvedValue({ id: 11 } as never);
     vi.mocked(sendEmail).mockResolvedValue({ status: "not_configured" });
@@ -150,7 +180,16 @@ describe("resendAdminInvite", () => {
     vi.clearAllMocks();
   });
 
+  it("rejects a non-admin session", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "1", role: "member" } } as never);
+
+    await expect(resendAdminInvite(2)).rejects.toThrow("unauthorized");
+    expect(prisma.admin.findUnique).not.toHaveBeenCalled();
+    expect(prisma.admin.update).not.toHaveBeenCalled();
+  });
+
   it("issues a new token and resends the invite email for a pending admin", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "9", role: "hq" } } as never);
     vi.mocked(prisma.admin.findUnique).mockResolvedValue({
       id: 2,
       name: "招待中 太郎",
@@ -177,6 +216,7 @@ describe("resendAdminInvite", () => {
   });
 
   it("returns already_active when the admin already has a password set", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "9", role: "hq" } } as never);
     vi.mocked(prisma.admin.findUnique).mockResolvedValue({
       id: 1,
       name: "店長 佐藤",
@@ -191,6 +231,7 @@ describe("resendAdminInvite", () => {
   });
 
   it("returns not_found when the admin does not exist", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "9", role: "hq" } } as never);
     vi.mocked(prisma.admin.findUnique).mockResolvedValue(null);
 
     const result = await resendAdminInvite(999);
@@ -204,7 +245,17 @@ describe("updateAdmin", () => {
     vi.clearAllMocks();
   });
 
+  it("rejects a non-admin session", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "1", role: "member" } } as never);
+
+    await expect(
+      updateAdmin({ adminId: 1, name: "店長 佐藤（改姓）", role: "manager", storeIds: [3] }),
+    ).rejects.toThrow("unauthorized");
+    expect(prisma.admin.update).not.toHaveBeenCalled();
+  });
+
   it("updates name, role, and replaces store targets", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "9", role: "hq" } } as never);
     vi.mocked(prisma.admin.update).mockResolvedValue({} as never);
 
     await updateAdmin({ adminId: 1, name: "店長 佐藤（改姓）", role: "manager", storeIds: [3] });
@@ -225,7 +276,15 @@ describe("deactivateAdmin", () => {
     vi.clearAllMocks();
   });
 
+  it("rejects a non-admin session", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "1", role: "member" } } as never);
+
+    await expect(deactivateAdmin(1)).rejects.toThrow("unauthorized");
+    expect(prisma.admin.update).not.toHaveBeenCalled();
+  });
+
   it("sets isActive to false", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "9", role: "hq" } } as never);
     vi.mocked(prisma.admin.update).mockResolvedValue({} as never);
 
     await deactivateAdmin(1);
@@ -239,7 +298,15 @@ describe("reactivateAdmin", () => {
     vi.clearAllMocks();
   });
 
+  it("rejects a non-admin session", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "1", role: "member" } } as never);
+
+    await expect(reactivateAdmin(1)).rejects.toThrow("unauthorized");
+    expect(prisma.admin.update).not.toHaveBeenCalled();
+  });
+
   it("sets isActive to true", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "9", role: "hq" } } as never);
     vi.mocked(prisma.admin.update).mockResolvedValue({} as never);
 
     await reactivateAdmin(1);

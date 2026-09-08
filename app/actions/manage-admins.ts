@@ -1,8 +1,13 @@
 "use server";
 
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/delivery/send-email";
 import type { AdminRole } from "@prisma/client";
+
+// Server Actionはページのミドルウェアガードに関わらず直接呼び出せるため、
+// 管理者向けアクションは必ずそれぞれの関数内でセッションを検証する。
+const ADMIN_ROLES = new Set(["hq", "manager", "staff"]);
 
 const INVITE_EXPIRY_DAYS = 7;
 
@@ -18,6 +23,11 @@ export interface AdminListItem {
 }
 
 export async function listAdmins(): Promise<AdminListItem[]> {
+  const session = await auth();
+  if (!session?.user || !ADMIN_ROLES.has(session.user.role)) {
+    throw new Error("unauthorized");
+  }
+
   const admins = await prisma.admin.findMany({
     include: { stores: { include: { store: true } } },
     orderBy: { id: "asc" },
@@ -64,6 +74,11 @@ export type CreateAdminResult =
   | { status: "email_taken" };
 
 export async function createAdmin(params: CreateAdminParams): Promise<CreateAdminResult> {
+  const session = await auth();
+  if (!session?.user || !ADMIN_ROLES.has(session.user.role)) {
+    throw new Error("unauthorized");
+  }
+
   const existing = await prisma.admin.findUnique({ where: { email: params.email } });
   if (existing) {
     return { status: "email_taken" };
@@ -100,6 +115,11 @@ export type ResendInviteResult =
 
 // Brevo未設定期間中に送信できなかった招待、または期限切れになった招待をやり直すための再送機能。
 export async function resendAdminInvite(adminId: number): Promise<ResendInviteResult> {
+  const session = await auth();
+  if (!session?.user || !ADMIN_ROLES.has(session.user.role)) {
+    throw new Error("unauthorized");
+  }
+
   const admin = await prisma.admin.findUnique({ where: { id: adminId } });
   if (!admin) {
     return { status: "not_found" };
@@ -132,6 +152,11 @@ export interface UpdateAdminParams {
 }
 
 export async function updateAdmin(params: UpdateAdminParams): Promise<void> {
+  const session = await auth();
+  if (!session?.user || !ADMIN_ROLES.has(session.user.role)) {
+    throw new Error("unauthorized");
+  }
+
   await prisma.admin.update({
     where: { id: params.adminId },
     data: {
@@ -143,9 +168,19 @@ export async function updateAdmin(params: UpdateAdminParams): Promise<void> {
 }
 
 export async function deactivateAdmin(adminId: number): Promise<void> {
+  const session = await auth();
+  if (!session?.user || !ADMIN_ROLES.has(session.user.role)) {
+    throw new Error("unauthorized");
+  }
+
   await prisma.admin.update({ where: { id: adminId }, data: { isActive: false } });
 }
 
 export async function reactivateAdmin(adminId: number): Promise<void> {
+  const session = await auth();
+  if (!session?.user || !ADMIN_ROLES.has(session.user.role)) {
+    throw new Error("unauthorized");
+  }
+
   await prisma.admin.update({ where: { id: adminId }, data: { isActive: true } });
 }
