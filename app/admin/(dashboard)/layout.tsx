@@ -12,8 +12,6 @@ import {
   Store,
   ChartColumn,
   Send,
-  Repeat,
-  FileText,
   Terminal,
 } from "lucide-react";
 import { AdminHeader } from "@/components/admin/admin-header";
@@ -32,8 +30,6 @@ const NAV_ITEMS = [
   { href: "/admin/stores", label: "店舗管理", icon: Store },
   { href: "/admin/reports", label: "売上・月報レポート", icon: ChartColumn },
   { href: "/admin/segment-campaigns", label: "メール／LINE配信管理", icon: Send },
-  { href: "/admin/auto-delivery", label: "自動配信設定", icon: Repeat },
-  { href: "/admin/templates", label: "配信テンプレート管理", icon: FileText },
   { href: "/admin/cron-logs", label: "Cronジョブ実行ログ", icon: Terminal },
 ] as const;
 

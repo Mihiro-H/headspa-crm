@@ -15,8 +15,6 @@ const PAGE_TITLES: Record<string, string> = {
   "/admin/stores": "店舗管理",
   "/admin/reports": "売上・月報レポート",
   "/admin/segment-campaigns": "メール／LINE配信管理",
-  "/admin/auto-delivery": "自動配信設定",
-  "/admin/templates": "配信テンプレート管理",
   "/admin/cron-logs": "Cronジョブ実行ログ",
 };
 
