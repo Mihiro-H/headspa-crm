@@ -80,7 +80,8 @@ export function AuthStep({ onAuthenticated }: AuthStepProps) {
           LINEで連携ログイン
         </button>
         <p className="text-center text-xs text-neutral-500">
-          LINE連携すると、予約確認などのお知らせをLINEで受け取れます。<br/>
+          LINE連携すると、予約確認などのお知らせをLINEで受け取れます。
+          <br />
         </p>
       </div>
 
@@ -183,8 +184,14 @@ export function AuthStep({ onAuthenticated }: AuthStepProps) {
           </select>
           <p className="text-xs text-neutral-500">
             誕生月をご登録いただくと誕生月特典が受け取れます。
-          <br/>
+            <br />
             性別は、性別限定コース・オプションの選択可否判定に使用いたします。
+          </p>
+          <p className="text-xs text-neutral-500">
+            <a href="/terms" target="_blank" className="text-primary-600 underline">
+              利用規約
+            </a>
+            に同意の上、登録してください。
           </p>
           <button
             type="button"
