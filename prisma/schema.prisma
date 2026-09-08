@@ -524,3 +524,21 @@ model TermsOfService {
 
   @@map("terms_of_service")
 }
+
+model RolePagePermission {
+  id      Int             @id @default(autoincrement())
+  role    AdminRole
+  pageKey String          @map("page_key") @db.VarChar(100)
+  level   PermissionLevel @default(edit)
+
+  @@unique([role, pageKey])
+  @@map("role_page_permissions")
+}
+
+enum PermissionLevel {
+  edit
+  view
+  hidden
+
+  @@map("permission_level")
+}
