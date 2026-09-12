@@ -20,6 +20,8 @@ export interface MypageSummary {
   visitCount: number;
   nextStatusName: string | null;
   visitsToNextStatus: number | null;
+  currentStatusMinVisitCount: number;
+  nextStatusMinVisitCount: number | null;
   nextReservation: NextReservationSummary | null;
 }
 
@@ -53,6 +55,8 @@ export async function getMypageSummary(today: Date = new Date()): Promise<Mypage
     visitCount: member.visitCount,
     nextStatusName: nextStatus?.name ?? null,
     visitsToNextStatus: nextStatus ? nextStatus.minVisitCount - member.visitCount : null,
+    currentStatusMinVisitCount: member.status.minVisitCount,
+    nextStatusMinVisitCount: nextStatus?.minVisitCount ?? null,
     nextReservation: nextReservation
       ? {
           id: nextReservation.id,

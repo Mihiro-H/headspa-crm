@@ -52,7 +52,7 @@ describe("getMypageSummary", () => {
       name: "田中 花子",
       visitCount: 3,
       statusId: 1,
-      status: { id: 1, name: "ブロンズ", colorCode: "#CD7F32" },
+      status: { id: 1, name: "ブロンズ", colorCode: "#CD7F32", minVisitCount: 0 },
     } as never);
 
     const result = await getMypageSummary();
@@ -64,6 +64,8 @@ describe("getMypageSummary", () => {
       visitCount: 3,
       nextStatusName: "シルバー",
       visitsToNextStatus: 2,
+      currentStatusMinVisitCount: 0,
+      nextStatusMinVisitCount: 5,
       nextReservation: null,
     });
   });
@@ -75,13 +77,14 @@ describe("getMypageSummary", () => {
       name: "田中 花子",
       visitCount: 20,
       statusId: 3,
-      status: { id: 3, name: "ゴールド", colorCode: "#FFD700" },
+      status: { id: 3, name: "ゴールド", colorCode: "#FFD700", minVisitCount: 10 },
     } as never);
 
     const result = await getMypageSummary();
 
     expect(result?.nextStatusName).toBeNull();
     expect(result?.visitsToNextStatus).toBeNull();
+    expect(result?.nextStatusMinVisitCount).toBeNull();
   });
 
   it("includes the nearest upcoming confirmed reservation when present", async () => {
@@ -91,7 +94,7 @@ describe("getMypageSummary", () => {
       name: "田中 花子",
       visitCount: 3,
       statusId: 1,
-      status: { id: 1, name: "ブロンズ", colorCode: "#CD7F32" },
+      status: { id: 1, name: "ブロンズ", colorCode: "#CD7F32", minVisitCount: 0 },
     } as never);
     vi.mocked(prisma.reservation.findFirst).mockResolvedValue({
       id: 55,
