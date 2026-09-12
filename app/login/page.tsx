@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { MessageCircle, Eye, EyeOff } from "lucide-react";
@@ -28,8 +29,15 @@ export default function MemberLoginPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full min-h-screen max-w-sm flex-col justify-center gap-4 p-4">
-      <h1 className="font-heading text-2xl text-primary-700">フォレスパ</h1>
+    <div className="mx-auto flex w-full min-h-screen max-w-sm flex-col justify-start gap-4 p-4 pt-16">
+      <Image
+        src="/logo/foresupa_logo_tight.png"
+        alt="フォレスパ"
+        width={1206}
+        height={600}
+        className="h-auto w-40"
+        priority
+      />
       {error && <p className="rounded-lg bg-error/10 p-3 text-sm text-error">{error}</p>}
       <button
         type="button"

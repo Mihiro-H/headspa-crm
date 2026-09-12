@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
@@ -26,8 +27,18 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full min-h-screen max-w-sm flex-col justify-center gap-4 p-4">
-      <h1 className="font-heading text-2xl text-primary-700">フォレスパ 管理画面</h1>
+    <div className="mx-auto flex w-full min-h-screen max-w-sm flex-col justify-start gap-4 p-4 pt-16">
+      <div className="flex flex-col gap-1">
+        <Image
+          src="/logo/foresupa_logo_tight.png"
+          alt="フォレスパ"
+          width={1206}
+          height={600}
+          className="h-auto w-40"
+          priority
+        />
+        <p className="text-sm text-neutral-500">管理画面</p>
+      </div>
       {error && <p className="rounded-lg bg-error/10 p-3 text-sm text-error">{error}</p>}
       <input
         type="email"
