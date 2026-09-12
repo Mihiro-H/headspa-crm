@@ -20,7 +20,6 @@ export default function AdminCustomerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const [tab, setTab] = useState<"basic" | "history">("basic");
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
 
   useEffect(() => {
@@ -33,97 +32,68 @@ export default function AdminCustomerDetailPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-3">
-        <span
-          className="rounded-full px-2 py-1 text-xs text-white"
-          style={{ backgroundColor: customer.statusColor }}
-        >
-          {customer.statusName}
-        </span>
-      </div>
+      <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-4 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-secondary-100 text-lg font-medium text-secondary-700">
+              {customer.name.charAt(0)}
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="text-lg font-medium text-neutral-800">{customer.name} 様</p>
+              <span
+                className="rounded-full px-2 py-1 text-xs font-medium text-white"
+                style={{ backgroundColor: customer.statusColor }}
+              >
+                {customer.statusName}会員
+              </span>
+            </div>
+          </div>
 
-      <div className="flex gap-2 border-b border-neutral-200">
-        <button
-          type="button"
-          onClick={() => setTab("basic")}
-          className={`px-4 py-2 text-sm ${
-            tab === "basic"
-              ? "border-b-2 border-primary-500 text-primary-700"
-              : "text-neutral-500"
-          }`}
-        >
-          基本情報
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("history")}
-          className={`px-4 py-2 text-sm ${
-            tab === "history"
-              ? "border-b-2 border-primary-500 text-primary-700"
-              : "text-neutral-500"
-          }`}
-        >
-          来店履歴
-        </button>
-      </div>
-
-      {tab === "basic" && (
-        <div className="flex flex-col gap-2 rounded-lg border border-neutral-200 bg-neutral-0 p-4 shadow-sm">
-          <p className="text-sm text-neutral-800">
-            <span className="text-neutral-500">フリガナ：</span>
-            {customer.nameKana ?? "—"}
-          </p>
-          <p className="text-sm text-neutral-800">
-            <span className="text-neutral-500">メール：</span>
-            {customer.email}
-          </p>
-          <p className="text-sm text-neutral-800">
-            <span className="text-neutral-500">電話番号：</span>
-            {customer.phone}
-          </p>
-          <p className="text-sm text-neutral-800">
-            <span className="text-neutral-500">誕生月：</span>
-            {customer.birthMonth}月
-          </p>
-          <p className="text-sm text-neutral-800">
-            <span className="text-neutral-500">性別：</span>
-            {GENDER_LABEL[customer.gender] ?? customer.gender}
-          </p>
-          <p className="text-sm text-neutral-800">
-            <span className="text-neutral-500">LINE連携：</span>
-            {customer.lineLinked ? "連携済み" : "未連携"}
-          </p>
-          <p className="text-sm text-neutral-800">
-            <span className="text-neutral-500">来店回数：</span>
-            {customer.visitCount}回
-          </p>
-          <p className="text-sm text-neutral-800">
-            <span className="text-neutral-500">累計利用金額：</span>
-            {formatYen(customer.totalSpent)}
-          </p>
-        </div>
-      )}
-
-      {tab === "history" && (
-        <div className="flex flex-col gap-2">
-          {customer.reservationHistory.length === 0 && (
-            <p className="text-sm text-neutral-500">来店履歴がありません。</p>
-          )}
-          {customer.reservationHistory.map((h) => (
-            <div
-              key={h.id}
-              className="rounded-lg border border-neutral-200 bg-neutral-0 p-3 shadow-sm"
-            >
-              <p className="text-sm font-medium text-neutral-800">
-                {h.date}　{h.courseName || "（明細なし）"}
-              </p>
-              <p className="mt-1 text-xs text-neutral-500">
-                {h.storeName}　担当：{h.staffName ?? "指名なし"}　{formatYen(h.totalPrice)}
+          {/* 来店回数・累計利用金額はここで大きく目立たせる */}
+          <div className="flex gap-6">
+            <div className="text-right">
+              <p className="text-xs text-neutral-500">来店回数</p>
+              <p className="text-2xl font-semibold text-primary-700">{customer.visitCount}回</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-neutral-500">累計利用金額</p>
+              <p className="text-2xl font-semibold text-primary-700">
+                {formatYen(customer.totalSpent)}
               </p>
             </div>
-          ))}
+          </div>
         </div>
-      )}
+
+        {/* 旧「基本情報」タブの内容をここに統合 */}
+        <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 border-t border-neutral-100 pt-3 text-sm text-neutral-600">
+          <span>フリガナ：{customer.nameKana ?? "—"}</span>
+          <span>メール：{customer.email}</span>
+          <span>電話番号：{customer.phone}</span>
+          <span>誕生月：{customer.birthMonth}月</span>
+          <span>性別：{GENDER_LABEL[customer.gender] ?? customer.gender}</span>
+          <span>LINE連携：{customer.lineLinked ? "連携済み" : "未連携"}</span>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <h2 className="text-sm font-medium text-neutral-600">来店履歴</h2>
+        {customer.reservationHistory.length === 0 && (
+          <p className="text-sm text-neutral-500">来店履歴がありません。</p>
+        )}
+        {customer.reservationHistory.map((h) => (
+          <div
+            key={h.id}
+            className="rounded-lg border border-neutral-200 bg-neutral-0 p-3 shadow-sm"
+          >
+            <p className="text-sm font-medium text-neutral-800">
+              {h.date}　{h.courseName || "（明細なし）"}
+            </p>
+            <p className="mt-1 text-xs text-neutral-500">
+              {h.storeName}　担当：{h.staffName ?? "指名なし"}　{formatYen(h.totalPrice)}
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
