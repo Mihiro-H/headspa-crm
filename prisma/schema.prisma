@@ -408,12 +408,12 @@ enum JobStatus {
 model CustomerNote {
   id        Int      @id @default(autoincrement()) @map("note_id")
   memberId  Int      @map("member_id")
-  staffId   Int      @map("staff_id")
+  staffId   Int?     @map("staff_id")
   noteText  String   @map("note_text")
   createdAt DateTime @default(now()) @map("created_at")
 
   member Member @relation(fields: [memberId], references: [id])
-  staff  Staff  @relation(fields: [staffId], references: [id])
+  staff  Staff? @relation(fields: [staffId], references: [id])
 
   @@map("customer_notes")
 }
