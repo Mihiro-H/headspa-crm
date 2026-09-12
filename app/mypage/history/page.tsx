@@ -19,11 +19,21 @@ const STATUS_LABEL: Record<string, string> = {
 export default function MemberHistoryPage() {
   const router = useRouter();
   const [history, setHistory] = useState<MemberReservationHistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    getMemberReservationHistory().then((h) => setHistory(h ?? []));
+    getMemberReservationHistory()
+      .then((h) => {
+        setHistory(h ?? []);
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoadError("来店履歴の取得に失敗しました。");
+        setLoading(false);
+      });
   }, []);
 
   async function handleCancel(reservationId: number) {
@@ -65,6 +75,14 @@ export default function MemberHistoryPage() {
     } else {
       setMessage("変更に失敗しました。");
     }
+  }
+
+  if (loading) {
+    return <p className="text-sm text-neutral-500">読み込み中...</p>;
+  }
+
+  if (loadError) {
+    return <p className="text-sm text-error">{loadError}</p>;
   }
 
   return (
