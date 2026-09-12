@@ -8,6 +8,7 @@ export interface CalendarReservation {
   staffId: number | null;
   staffName: string | null;
   memberName: string | null;
+  categoryName: string;
   courseName: string;
   startMinutes: number;
   endMinutes: number;
@@ -30,7 +31,7 @@ export async function getCalendarReservations(
     include: {
       staff: true,
       member: true,
-      items: { include: { course: true } },
+      items: { include: { course: { include: { category: true } } } },
     },
     orderBy: { startTime: "asc" },
   });
@@ -42,6 +43,7 @@ export async function getCalendarReservations(
       staffId: r.staffId,
       staffName: r.staff?.name ?? null,
       memberName: r.member?.name ?? null,
+      categoryName: courseItem?.course?.category?.name ?? "",
       courseName: courseItem?.course?.name ?? "",
       startMinutes: dbTimeToMinutes(r.startTime),
       endMinutes: dbTimeToMinutes(r.endTime),

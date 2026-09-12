@@ -24,7 +24,12 @@ describe("getCalendarReservations", () => {
         endTime: new Date("1970-01-01T12:00:00Z"),
         status: "confirmed",
         source: "web",
-        items: [{ itemType: "course", course: { name: "スタンダード" } }],
+        items: [
+          {
+            itemType: "course",
+            course: { name: "スタンダード", category: { name: "頭皮ケア重点" } },
+          },
+        ],
       },
       {
         id: 2,
@@ -47,6 +52,7 @@ describe("getCalendarReservations", () => {
         staffId: 3,
         staffName: "田中 花子",
         memberName: "佐藤 太郎",
+        categoryName: "頭皮ケア重点",
         courseName: "スタンダード",
         startMinutes: 660,
         endMinutes: 720,
@@ -58,6 +64,7 @@ describe("getCalendarReservations", () => {
         staffId: null,
         staffName: null,
         memberName: null,
+        categoryName: "",
         courseName: "",
         startMinutes: 840,
         endMinutes: 900,
@@ -74,7 +81,7 @@ describe("getCalendarReservations", () => {
       include: {
         staff: true,
         member: true,
-        items: { include: { course: true } },
+        items: { include: { course: { include: { category: true } } } },
       },
       orderBy: { startTime: "asc" },
     });

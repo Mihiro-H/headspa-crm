@@ -162,7 +162,9 @@ export default function AdminCalendarPage() {
                               {r.memberName ? `${r.memberName}様` : "（未確定）"}
                             </p>
                             <p className="text-xs text-neutral-600">
-                              {r.courseName || "（明細なし）"}
+                              {r.courseName
+                                ? `${r.categoryName} ${r.courseName}`
+                                : "（明細なし）"}
                             </p>
                           </Link>
                         )}
