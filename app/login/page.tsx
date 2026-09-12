@@ -18,7 +18,9 @@ export default function MemberLoginPage() {
     setError(null);
     const result = await signIn("member-credentials", { email, password, redirect: false });
     setSubmitting(false);
-    if (result?.ok) {
+    // NextAuth v5 beta系は認証失敗時でもok:trueとerrorが同時に返ることがあるため、
+    // okだけでなくerrorが無いことも確認する（2026-09-12、実機調査で確認済み）。
+    if (result?.ok && !result?.error) {
       router.push("/mypage");
     } else {
       setError("メールアドレスまたはパスワードが正しくありません。");
