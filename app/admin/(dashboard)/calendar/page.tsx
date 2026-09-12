@@ -10,6 +10,7 @@ import {
   type CalendarReservation,
 } from "@/app/actions/calendar-reservations";
 import { listStaffForStore, type StaffListItem } from "@/app/actions/staff";
+import { assignReservationStaff } from "@/app/actions/assign-reservation-staff";
 import { minutesToLabel } from "@/lib/reservation/time";
 import { formatJapaneseDate } from "@/lib/reservation/date-format";
 
@@ -52,6 +53,8 @@ export default function AdminCalendarPage() {
   const [reservations, setReservations] = useState<CalendarReservation[]>([]);
   const [staffList, setStaffList] = useState<StaffListItem[]>([]);
   const [scope, setScope] = useState<AdminStoreScope>({ isUnrestricted: true, storeIds: [] });
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([listStores(), getCurrentAdminStoreScope()]).then(([list, s]) => {
@@ -69,6 +72,33 @@ export default function AdminCalendarPage() {
     getCalendarReservations(storeId, date).then(setReservations);
     listStaffForStore(storeId).then(setStaffList);
   }, [storeId, date]);
+
+  async function handleDropOnStaff(
+    reservationId: number,
+    targetStaffId: number,
+    targetRowMinutes: number,
+  ) {
+    setDragOverKey(null);
+    // ドラッグ元のカードと違う時間帯の行にドロップされた場合は弾く
+    // （この機能は担当の割り当てのみが目的で、予約時間の変更はスコープ外）。
+    const dragged = reservations.find((r) => r.id === reservationId);
+    if (!dragged || dragged.startMinutes !== targetRowMinutes) {
+      setMessage("同じ時間帯の列にドロップしてください。");
+      return;
+    }
+
+    const result = await assignReservationStaff(reservationId, targetStaffId);
+    if (result.status === "assigned") {
+      setMessage(null);
+      if (storeId !== null) {
+        getCalendarReservations(storeId, date).then(setReservations);
+      }
+    } else if (result.status === "conflict") {
+      setMessage("この時間帯は既に別の予約が入っているため割り当てできません。");
+    } else {
+      setMessage("担当の割り当てに失敗しました。");
+    }
+  }
 
   const visibleStores = scope.isUnrestricted
     ? stores
@@ -143,6 +173,8 @@ export default function AdminCalendarPage() {
         </div>
       </div>
 
+      {message && <p className="text-sm text-error">{message}</p>}
+
       {rows.length === 0 ? (
         <p className="text-sm text-neutral-500">この日の予約はありません。</p>
       ) : (
@@ -166,12 +198,60 @@ export default function AdminCalendarPage() {
                   </td>
                   {columns.map((c) => {
                     const r = findReservation(rowMinutes, c.key);
+                    const cellKey = `${rowMinutes}-${c.key}`;
+                    // ドロップ先になれるのは「スタッフの列」かつ「空きセル」のみ。
+                    const isDroppableStaffCell = c.key !== UNASSIGNED_COLUMN_KEY && !r;
+                    // ドラッグできるのは「指名なし」列のカード（担当未定の予約）のみ。
+                    const isDraggableCard = !!r && c.key === UNASSIGNED_COLUMN_KEY;
+
                     return (
-                      <td key={c.key} className="p-2 align-top">
+                      <td
+                        key={c.key}
+                        className={`p-2 align-top ${
+                          isDroppableStaffCell && dragOverKey === cellKey
+                            ? "bg-primary-50"
+                            : ""
+                        }`}
+                        onDragOver={
+                          isDroppableStaffCell
+                            ? (e) => {
+                                e.preventDefault();
+                                setDragOverKey(cellKey);
+                              }
+                            : undefined
+                        }
+                        onDragLeave={
+                          isDroppableStaffCell ? () => setDragOverKey(null) : undefined
+                        }
+                        onDrop={
+                          isDroppableStaffCell
+                            ? (e) => {
+                                e.preventDefault();
+                                const reservationId = Number(
+                                  e.dataTransfer.getData("text/plain"),
+                                );
+                                if (reservationId) {
+                                  handleDropOnStaff(reservationId, Number(c.key), rowMinutes);
+                                }
+                              }
+                            : undefined
+                        }
+                      >
                         {r && (
                           <Link
                             href={`/admin/reservations/${r.id}`}
-                            className={`block rounded-md p-2 ${STATUS_CARD_CLASS[r.status] ?? "border-l-4 border-neutral-300 bg-neutral-50"}`}
+                            draggable={isDraggableCard}
+                            onDragStart={
+                              isDraggableCard
+                                ? (e) => {
+                                    e.dataTransfer.setData("text/plain", String(r.id));
+                                    e.dataTransfer.effectAllowed = "move";
+                                  }
+                                : undefined
+                            }
+                            className={`block rounded-md p-2 ${STATUS_CARD_CLASS[r.status] ?? "border-l-4 border-neutral-300 bg-neutral-50"} ${
+                              isDraggableCard ? "cursor-grab" : ""
+                            }`}
                           >
                             <p className="text-xs font-medium text-neutral-800">
                               {minutesToLabel(r.startMinutes)}{" "}
