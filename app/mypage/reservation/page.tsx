@@ -72,7 +72,7 @@ export default function MemberReservationPage() {
   if (!reservation) {
     return (
       <div className="flex flex-col gap-4">
-        <h1 className="font-heading text-xl text-primary-700">予約確認</h1>
+        <h1 className="text-xl text-primary-700">予約確認</h1>
         {message && <p className="text-sm text-neutral-600">{message}</p>}
         <p className="text-sm text-neutral-500">次回のご予約はありません。</p>
       </div>
@@ -81,7 +81,7 @@ export default function MemberReservationPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-heading text-xl text-primary-700">予約確認</h1>
+      <h1 className="text-xl text-primary-700">予約確認</h1>
       {message && <p className="text-sm text-neutral-600">{message}</p>}
 
       <div className="flex flex-col gap-2 rounded-lg border border-neutral-200 p-4">

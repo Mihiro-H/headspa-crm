@@ -69,7 +69,7 @@ export default function MemberProfilePage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="font-heading text-xl text-primary-700">プロフィール編集</h1>
+      <h1 className="text-xl text-primary-700">プロフィール編集</h1>
 
       <div className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-neutral-600">基本情報</h2>

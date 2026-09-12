@@ -30,7 +30,7 @@ export default function AdminLoginPage() {
     <div className="mx-auto flex w-full min-h-screen max-w-sm flex-col justify-start gap-4 p-4 pt-16">
       <div className="flex flex-col gap-1">
         <Image
-          src="/logo/foresupa_logo_tight.png"
+          src="/logo/foresupa_logo_tight_transparent.png"
           alt="フォレスパ"
           width={1206}
           height={600}
