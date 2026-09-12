@@ -1,14 +1,14 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Calendar, Home, Clock, Settings } from "lucide-react";
+import { Home, Clock, Bell, Settings } from "lucide-react";
 
-// お知らせ機能（A-09/A-10）は未実装のため遷移先が存在せず、ナビには含めない。
 const NAV_ITEMS = [
-  { href: "/reserve", label: "予約", icon: Calendar },
-  { href: "/mypage", label: "マイページ", icon: Home },
+  { href: "/mypage", label: "ホーム", icon: Home },
   { href: "/mypage/history", label: "来店履歴", icon: Clock },
+  { href: "/mypage/notifications", label: "お知らせ", icon: Bell },
   { href: "/mypage/profile", label: "設定", icon: Settings },
 ];
 
@@ -17,7 +17,27 @@ export default function MypageLayout({ children }: { children: React.ReactNode }
 
   return (
     <div className="mx-auto flex w-full min-h-dvh max-w-md flex-col pb-[calc(5rem+env(safe-area-inset-bottom))]">
-      <main className="flex-1 p-4">{children}</main>
+      {/*
+        固定ヘッダー。ロゴのみを左揃えで表示する。
+        pt-[env(safe-area-inset-top)]でノッチ等との重なりを避ける。
+      */}
+      <header className="fixed top-0 left-1/2 z-50 w-full max-w-md -translate-x-1/2 border-b border-neutral-200 bg-neutral-0 px-4 pt-[env(safe-area-inset-top)]">
+        <div className="flex h-14 items-center">
+          <Image
+            src="/logo/foresupa_logo_tight.png"
+            alt="フォレスパ"
+            width={1206}
+            height={600}
+            className="h-auto w-28"
+            priority
+          />
+        </div>
+      </header>
+
+      <main className="flex-1 p-4 pt-[calc(3.5rem+env(safe-area-inset-top)+1rem)]">
+        {children}
+      </main>
+
       {/*
         min-h-screen(=100vh)はモバイルブラウザのアドレスバー分の高さ変動を
         考慮できず、fixed要素がツールバーの裏に隠れる/ビューポート外に
