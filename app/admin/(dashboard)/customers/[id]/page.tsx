@@ -152,7 +152,7 @@ function ReservationHistoryTable({ customer }: { customer: CustomerDetail }) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-neutral-200">
+    <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-0">
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-neutral-200 bg-neutral-50 text-left text-neutral-500">
@@ -258,7 +258,7 @@ function DeliveryHistoryTable({ memberId }: { memberId: number }) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-neutral-200">
+    <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-0">
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-neutral-200 bg-neutral-50 text-left text-neutral-500">

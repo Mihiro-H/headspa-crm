@@ -21,6 +21,13 @@ const STATUS_CARD_CLASS: Record<string, string> = {
   completed: "border-l-4 border-disabled bg-disabled/20",
 };
 
+// 上部の凡例用：カードの色分けとステータス名の対応表。
+const STATUS_LEGEND: Array<{ status: string; label: string; dotClass: string }> = [
+  { status: "temp_hold", label: "仮予約", dotClass: "bg-warning" },
+  { status: "confirmed", label: "確定", dotClass: "bg-success" },
+  { status: "completed", label: "来店済み", dotClass: "bg-disabled" },
+];
+
 const UNASSIGNED_COLUMN_KEY = "unassigned";
 
 interface CalendarColumn {
@@ -109,6 +116,15 @@ export default function AdminCalendarPage() {
           >
             <ChevronRight className="h-4 w-4" />
           </button>
+
+          <div className="ml-4 flex items-center gap-3 text-xs text-neutral-600">
+            {STATUS_LEGEND.map(({ status, label, dotClass }) => (
+              <span key={status} className="flex items-center gap-1.5">
+                <span className={`h-2.5 w-2.5 rounded-full ${dotClass}`} />
+                {label}
+              </span>
+            ))}
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -130,7 +146,7 @@ export default function AdminCalendarPage() {
       {rows.length === 0 ? (
         <p className="text-sm text-neutral-500">この日の予約はありません。</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-neutral-200">
+        <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-0">
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-neutral-200 bg-neutral-50">
