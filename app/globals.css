@@ -161,13 +161,6 @@ body {
   color: var(--color-neutral-600);
 }
 
-h1,
-h2,
-h3,
-h4 {
-  font-family: var(--font-heading);
-}
-
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
