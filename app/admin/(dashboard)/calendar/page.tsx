@@ -158,7 +158,8 @@ export default function AdminCalendarPage() {
                             className={`block rounded-md p-2 ${STATUS_CARD_CLASS[r.status] ?? "border-l-4 border-neutral-300 bg-neutral-50"}`}
                           >
                             <p className="text-xs font-medium text-neutral-800">
-                              {minutesToLabel(r.startMinutes)} {r.memberName ?? "（未確定）"}様
+                              {minutesToLabel(r.startMinutes)}{" "}
+                              {r.memberName ? `${r.memberName}様` : "（未確定）"}
                             </p>
                             <p className="text-xs text-neutral-600">
                               {r.courseName || "（明細なし）"}
