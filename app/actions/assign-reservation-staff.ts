@@ -3,9 +3,11 @@
 import { prisma } from "@/lib/db";
 import { dbTimeToMinutes } from "@/lib/reservation/time";
 import { isSlotFree } from "@/lib/reservation/slot-conflict";
+import { getCurrentAdminStoreScope } from "./current-admin-scope";
 
 export type AssignReservationStaffResult =
   | { status: "assigned" }
+  | { status: "unauthorized" }
   | { status: "not_found" }
   | { status: "already_assigned" }
   | { status: "different_store" }
@@ -24,6 +26,14 @@ export async function assignReservationStaff(
   if (!reservation) {
     return { status: "not_found" };
   }
+
+  // クライアントが渡すreservationId/staffIdを鵜呑みにせず、閲覧者の店舗スコープと
+  // 突き合わせる（他店舗の予約を無断で操作できてしまうIDORを防ぐ）。
+  const scope = await getCurrentAdminStoreScope();
+  if (!scope.isUnrestricted && !scope.storeIds.includes(reservation.storeId)) {
+    return { status: "unauthorized" };
+  }
+
   if (reservation.staffId !== null) {
     return { status: "already_assigned" };
   }

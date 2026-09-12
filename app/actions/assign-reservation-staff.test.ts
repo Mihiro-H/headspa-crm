@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { assignReservationStaff } from "./assign-reservation-staff";
 import { prisma } from "@/lib/db";
+import { getCurrentAdminStoreScope } from "./current-admin-scope";
 
 vi.mock("@/lib/db", () => ({
   prisma: {
@@ -9,9 +10,52 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
+vi.mock("./current-admin-scope", () => ({
+  getCurrentAdminStoreScope: vi.fn(),
+}));
+
 describe("assignReservationStaff", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // 個別のテストで上書きしない限り、hqロール（全店舗アクセス可）を既定値とする。
+    vi.mocked(getCurrentAdminStoreScope).mockResolvedValue({
+      isUnrestricted: true,
+      storeIds: [],
+    });
+  });
+
+  it("returns unauthorized when there is no admin session", async () => {
+    vi.mocked(getCurrentAdminStoreScope).mockResolvedValue({
+      isUnrestricted: false,
+      storeIds: [],
+    });
+    vi.mocked(prisma.reservation.findUnique).mockResolvedValue({
+      id: 1,
+      staffId: null,
+      storeId: 1,
+    } as never);
+
+    const result = await assignReservationStaff(1, 2);
+
+    expect(result).toEqual({ status: "unauthorized" });
+    expect(prisma.reservation.update).not.toHaveBeenCalled();
+  });
+
+  it("returns unauthorized when the reservation belongs to a store outside the admin's scope", async () => {
+    vi.mocked(getCurrentAdminStoreScope).mockResolvedValue({
+      isUnrestricted: false,
+      storeIds: [2, 3],
+    });
+    vi.mocked(prisma.reservation.findUnique).mockResolvedValue({
+      id: 1,
+      staffId: null,
+      storeId: 1,
+    } as never);
+
+    const result = await assignReservationStaff(1, 2);
+
+    expect(result).toEqual({ status: "unauthorized" });
+    expect(prisma.reservation.update).not.toHaveBeenCalled();
   });
 
   it("returns not_found when the reservation does not exist", async () => {
