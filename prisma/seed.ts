@@ -189,11 +189,11 @@ async function main() {
   if (!existingAdmin) {
     await prisma.admin.create({
       data: {
+        // hqロールは店舗スコープなし（admin_storesへの行を作らない）が正しい状態。
         name: "システム管理者",
         email: ADMIN_SEED_EMAIL,
         passwordHash: await hashPassword(ADMIN_SEED_PASSWORD),
         role: "hq",
-        storeId: null,
       },
     });
   }
