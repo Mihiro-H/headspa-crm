@@ -42,7 +42,13 @@ describe("getCustomerDetail", () => {
           staff: { name: "田中 花子" },
           totalPrice: 8000,
           status: "completed",
-          items: [{ itemType: "course", course: { name: "スタンダード" } }],
+          nominationFeeApplied: 500,
+          items: [
+            {
+              itemType: "course",
+              course: { name: "スタンダード", category: { name: "頭皮ケア重点" } },
+            },
+          ],
         },
       ],
     } as never);
@@ -67,10 +73,12 @@ describe("getCustomerDetail", () => {
           id: 10,
           date: "2026-08-20",
           storeName: "フォレスパ 渋谷店",
+          categoryName: "頭皮ケア重点",
           courseName: "スタンダード",
           staffName: "田中 花子",
           totalPrice: 8000,
           status: "completed",
+          nominated: true,
         },
       ],
     });

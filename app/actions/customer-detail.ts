@@ -6,10 +6,12 @@ export interface ReservationHistoryItem {
   id: number;
   date: string;
   storeName: string;
+  categoryName: string;
   courseName: string;
   staffName: string | null;
   totalPrice: number;
   status: string;
+  nominated: boolean;
 }
 
 export interface CustomerDetail {
@@ -39,7 +41,7 @@ export async function getCustomerDetail(memberId: number): Promise<CustomerDetai
         include: {
           store: true,
           staff: true,
-          items: { include: { course: true } },
+          items: { include: { course: { include: { category: true } } } },
         },
       },
     },
@@ -64,10 +66,12 @@ export async function getCustomerDetail(memberId: number): Promise<CustomerDetai
       id: r.id,
       date: r.reservationDate.toISOString().slice(0, 10),
       storeName: r.store.name,
+      categoryName: r.items.find((i) => i.itemType === "course")?.course?.category?.name ?? "",
       courseName: r.items.find((i) => i.itemType === "course")?.course?.name ?? "",
       staffName: r.staff?.name ?? null,
       totalPrice: r.totalPrice,
       status: r.status,
+      nominated: r.nominationFeeApplied > 0,
     })),
   };
 }
