@@ -87,8 +87,10 @@ export default function AdminReservationDetailPage({
           {reservation.endTimeLabel}
         </p>
         <p className="text-sm text-neutral-800">
-          <span className="text-neutral-500">コース：</span>
-          {reservation.courseName || "（明細なし）"}
+          <span className="text-neutral-500">メニュー：</span>
+          {reservation.courseName
+            ? `${reservation.categoryName} ${reservation.courseName}`
+            : "（明細なし）"}
         </p>
         {reservation.optionNames.length > 0 && (
           <p className="text-sm text-neutral-800">

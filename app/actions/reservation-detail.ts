@@ -17,6 +17,7 @@ export interface ReservationDetail {
   memberPhone: string | null;
   storeName: string;
   staffName: string | null;
+  categoryName: string;
   courseName: string;
   optionNames: string[];
 }
@@ -30,7 +31,7 @@ export async function getReservationDetail(
       member: true,
       store: true,
       staff: true,
-      items: { include: { course: true, option: true } },
+      items: { include: { course: { include: { category: true } }, option: true } },
     },
   });
 
@@ -52,6 +53,7 @@ export async function getReservationDetail(
     memberPhone: reservation.member?.phone ?? null,
     storeName: reservation.store.name,
     staffName: reservation.staff?.name ?? null,
+    categoryName: courseItem?.course?.category?.name ?? "",
     courseName: courseItem?.course?.name ?? "",
     optionNames: optionItems.map((i) => i.option?.name ?? "").filter(Boolean),
   };

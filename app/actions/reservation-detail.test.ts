@@ -36,7 +36,11 @@ describe("getReservationDetail", () => {
       store: { name: "フォレスパ 渋谷店" },
       staff: { name: "田中 花子" },
       items: [
-        { itemType: "course", course: { name: "スタンダード" }, option: null },
+        {
+          itemType: "course",
+          course: { name: "スタンダード", category: { name: "頭皮ケア重点" } },
+          option: null,
+        },
         { itemType: "option", course: null, option: { name: "ハンド・マッサージ" } },
       ],
     } as never);
@@ -56,6 +60,7 @@ describe("getReservationDetail", () => {
       memberPhone: "090-0000-0000",
       storeName: "フォレスパ 渋谷店",
       staffName: "田中 花子",
+      categoryName: "頭皮ケア重点",
       courseName: "スタンダード",
       optionNames: ["ハンド・マッサージ"],
     });
