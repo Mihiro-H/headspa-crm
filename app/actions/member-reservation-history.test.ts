@@ -35,13 +35,14 @@ describe("getMemberReservationHistory", () => {
         reservationDate: new Date("2026-08-01T00:00:00.000Z"),
         totalPrice: 9000,
         status: "completed",
+        cancellationDeadline: new Date("2026-07-31T23:59:59.000Z"),
         store: { name: "フォレスパ 渋谷店" },
         staff: { name: "佐藤 由紀" },
         items: [{ itemType: "course", course: { name: "頭皮ケアプレミアム" } }],
       },
     ] as never);
 
-    const result = await getMemberReservationHistory();
+    const result = await getMemberReservationHistory(new Date("2026-08-05T00:00:00.000Z"));
 
     expect(result).toEqual([
       {
@@ -52,6 +53,7 @@ describe("getMemberReservationHistory", () => {
         staffName: "佐藤 由紀",
         totalPrice: 9000,
         status: "completed",
+        canModify: false,
       },
     ]);
     expect(prisma.reservation.findMany).toHaveBeenCalledWith({
@@ -59,5 +61,45 @@ describe("getMemberReservationHistory", () => {
       orderBy: { reservationDate: "desc" },
       include: { store: true, staff: true, items: { include: { course: true } } },
     });
+  });
+
+  it("marks canModify true for a confirmed reservation before its cancellation deadline", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "7", role: "member" } } as never);
+    vi.mocked(prisma.reservation.findMany).mockResolvedValue([
+      {
+        id: 41,
+        reservationDate: new Date("2026-09-10T00:00:00.000Z"),
+        totalPrice: 8000,
+        status: "confirmed",
+        cancellationDeadline: new Date("2026-09-09T23:59:59.000Z"),
+        store: { name: "フォレスパ 渋谷店" },
+        staff: null,
+        items: [{ itemType: "course", course: { name: "頭皮ケアスタンダード" } }],
+      },
+    ] as never);
+
+    const result = await getMemberReservationHistory(new Date("2026-09-01T00:00:00.000Z"));
+
+    expect(result?.[0].canModify).toBe(true);
+  });
+
+  it("marks canModify false for a confirmed reservation past its cancellation deadline", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "7", role: "member" } } as never);
+    vi.mocked(prisma.reservation.findMany).mockResolvedValue([
+      {
+        id: 42,
+        reservationDate: new Date("2026-09-10T00:00:00.000Z"),
+        totalPrice: 8000,
+        status: "confirmed",
+        cancellationDeadline: new Date("2026-09-09T23:59:59.000Z"),
+        store: { name: "フォレスパ 渋谷店" },
+        staff: null,
+        items: [{ itemType: "course", course: { name: "頭皮ケアスタンダード" } }],
+      },
+    ] as never);
+
+    const result = await getMemberReservationHistory(new Date("2026-09-10T00:00:00.000Z"));
+
+    expect(result?.[0].canModify).toBe(false);
   });
 });

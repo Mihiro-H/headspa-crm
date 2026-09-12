@@ -11,11 +11,12 @@ export interface MemberReservationHistoryItem {
   staffName: string | null;
   totalPrice: number;
   status: string;
+  canModify: boolean;
 }
 
-export async function getMemberReservationHistory(): Promise<
-  MemberReservationHistoryItem[] | null
-> {
+export async function getMemberReservationHistory(
+  today: Date = new Date(),
+): Promise<MemberReservationHistoryItem[] | null> {
   const session = await auth();
   if (!session?.user || session.user.role !== "member") {
     return null;
@@ -36,5 +37,6 @@ export async function getMemberReservationHistory(): Promise<
     staffName: r.staff?.name ?? null,
     totalPrice: r.totalPrice,
     status: r.status,
+    canModify: r.status === "confirmed" && today < r.cancellationDeadline,
   }));
 }
