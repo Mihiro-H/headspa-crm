@@ -7,6 +7,7 @@ import {
   saveStaffShiftRequest,
   type StaffShiftRequestItem,
 } from "@/app/actions/staff-shift-requests";
+import { minutesToLabel } from "@/lib/reservation/time";
 
 function yearMonthWithOffset(monthOffset: number): string {
   const d = new Date();
@@ -28,10 +29,7 @@ function minutesFromTimeInput(value: string): number | null {
 }
 
 function timeInputFromMinutes(minutes: number | null): string {
-  if (minutes === null) return "";
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  return minutes === null ? "" : minutesToLabel(minutes);
 }
 
 const EMPTY_ITEM = (workDate: string): StaffShiftRequestItem => ({
@@ -45,6 +43,7 @@ export default function MyShiftRequestsPage() {
   const [staffId, setStaffId] = useState<number | null | undefined>(undefined);
   const [yearMonth, setYearMonth] = useState(yearMonthWithOffset(1));
   const [requests, setRequests] = useState<Map<string, StaffShiftRequestItem>>(new Map());
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     getMyStaffId().then(setStaffId);
@@ -59,15 +58,32 @@ export default function MyShiftRequestsPage() {
 
   async function handleChange(workDate: string, patch: Partial<StaffShiftRequestItem>) {
     if (!staffId) return;
-    const next = { ...(requests.get(workDate) ?? EMPTY_ITEM(workDate)), ...patch };
+    const previous = requests.get(workDate);
+    const next = { ...(previous ?? EMPTY_ITEM(workDate)), ...patch };
     setRequests((prev) => new Map(prev).set(workDate, next));
-    await saveStaffShiftRequest({
+    setErrorMessage(null);
+
+    const result = await saveStaffShiftRequest({
       staffId,
       workDate,
       isDayOffRequested: next.isDayOffRequested,
       preferredStartMinutes: next.preferredStartMinutes,
       preferredEndMinutes: next.preferredEndMinutes,
     });
+
+    if (result.status !== "saved") {
+      // 保存に失敗した場合、画面上だけ「保存済み」に見えることを防ぐため元の値に戻す
+      setRequests((prev) => {
+        const rolledBack = new Map(prev);
+        if (previous) {
+          rolledBack.set(workDate, previous);
+        } else {
+          rolledBack.delete(workDate);
+        }
+        return rolledBack;
+      });
+      setErrorMessage(`${workDate}の保存に失敗しました。もう一度お試しください。`);
+    }
   }
 
   if (staffId === undefined) {
@@ -99,14 +115,16 @@ export default function MyShiftRequestsPage() {
         })}
       </select>
 
+      {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
+
       <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-0">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-neutral-200 bg-neutral-50 text-left text-neutral-500">
-              <th className="p-2 font-medium">日付</th>
-              <th className="p-2 font-medium">休み希望</th>
-              <th className="p-2 font-medium">希望開始</th>
-              <th className="p-2 font-medium">希望終了</th>
+              <th scope="col" className="p-2 font-medium">日付</th>
+              <th scope="col" className="p-2 font-medium">休み希望</th>
+              <th scope="col" className="p-2 font-medium">希望開始</th>
+              <th scope="col" className="p-2 font-medium">希望終了</th>
             </tr>
           </thead>
           <tbody>
@@ -119,6 +137,7 @@ export default function MyShiftRequestsPage() {
                   <td className="p-2">
                     <input
                       type="checkbox"
+                      aria-label={`${workDate} 休み希望`}
                       checked={isDayOff}
                       onChange={(e) =>
                         handleChange(workDate, {
@@ -132,6 +151,7 @@ export default function MyShiftRequestsPage() {
                   <td className="p-2">
                     <input
                       type="time"
+                      aria-label={`${workDate} 希望開始時刻`}
                       disabled={isDayOff}
                       value={timeInputFromMinutes(item?.preferredStartMinutes ?? null)}
                       onChange={(e) =>
@@ -145,6 +165,7 @@ export default function MyShiftRequestsPage() {
                   <td className="p-2">
                     <input
                       type="time"
+                      aria-label={`${workDate} 希望終了時刻`}
                       disabled={isDayOff}
                       value={timeInputFromMinutes(item?.preferredEndMinutes ?? null)}
                       onChange={(e) =>
