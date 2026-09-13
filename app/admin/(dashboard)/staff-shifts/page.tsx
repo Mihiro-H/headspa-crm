@@ -78,8 +78,16 @@ export default function StaffShiftsPage() {
   }
 
   useEffect(() => {
-    reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (storeId === null) return;
+    Promise.all([
+      listStaffForStore(storeId),
+      listShiftRequestsForStore(storeId, yearMonth),
+      listShiftDraftsForStore(storeId, yearMonth),
+    ]).then(([staff, requestsResult, draftsResult]) => {
+      setStaffList(staff);
+      setRequestsByStaffId(requestsResult.status === "ok" ? requestsResult.requestsByStaffId : {});
+      setDraftsByStaffId(draftsResult.status === "ok" ? draftsResult.draftsByStaffId : {});
+    });
   }, [storeId, yearMonth]);
 
   const visibleStores = scope.isUnrestricted ? stores : stores.filter((s) => scope.storeIds.includes(s.id));
