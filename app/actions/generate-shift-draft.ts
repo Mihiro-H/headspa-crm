@@ -64,7 +64,7 @@ export async function generateShiftDraftForStore(
       const draft = deriveDraftShift(
         request
           ? {
-              isDayOffRequested: request.isDayOffRequested,
+              requestType: request.requestType,
               preferredStartMinutes: request.preferredStartTime
                 ? dbTimeToMinutes(request.preferredStartTime)
                 : null,

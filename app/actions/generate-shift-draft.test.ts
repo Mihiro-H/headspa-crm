@@ -82,16 +82,17 @@ describe("generateShiftDraftForStore", () => {
     expect(prisma.staff.findMany).toHaveBeenCalledWith({ where: { storeId: 1, isActive: true } });
   });
 
-  it("generates one draft row per staff per day of the month, using each day's request", async () => {
+  it("generates a full-attendance draft row per staff per day when no request was submitted (未提出)", async () => {
     vi.mocked(prisma.store.findUnique).mockResolvedValue(STORE as never);
     vi.mocked(prisma.staff.findMany).mockResolvedValue([{ id: 42, storeId: 1 }] as never);
-    // 2026年10月は31日。全ての日で希望なし（休み扱いになる想定）。
+    // 2026年10月は31日。全ての日で希望未提出→出勤扱い（店舗営業時間フル）になる想定。
     vi.mocked(prisma.staffShiftRequest.findMany).mockResolvedValue([] as never);
 
     const result = await generateShiftDraftForStore(1, "2026-10");
 
     expect(result).toEqual({ status: "generated", count: 31 });
     expect(prisma.staffShiftDraft.upsert).toHaveBeenCalledTimes(31);
+    // 10/1は平日想定（木曜）：weekdayOpen 11:00〜weekdayClose 18:30が出勤扱いになる
     expect(prisma.staffShiftDraft.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
@@ -100,6 +101,35 @@ describe("generateShiftDraftForStore", () => {
         create: expect.objectContaining({
           staffId: 42,
           workDate: new Date("2026-10-01T00:00:00.000Z"),
+          isDayOff: false,
+          startTime: new Date("1970-01-01T11:00:00.000Z"),
+          endTime: new Date("1970-01-01T18:30:00.000Z"),
+        }),
+      }),
+    );
+  });
+
+  it("returns a day off when the staff explicitly requested one", async () => {
+    vi.mocked(prisma.store.findUnique).mockResolvedValue(STORE as never);
+    vi.mocked(prisma.staff.findMany).mockResolvedValue([{ id: 42, storeId: 1 }] as never);
+    vi.mocked(prisma.staffShiftRequest.findMany).mockResolvedValue([
+      {
+        staffId: 42,
+        workDate: new Date("2026-10-01T00:00:00.000Z"),
+        requestType: "day_off",
+        preferredStartTime: null,
+        preferredEndTime: null,
+      },
+    ] as never);
+
+    await generateShiftDraftForStore(1, "2026-10");
+
+    expect(prisma.staffShiftDraft.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          staffId_workDate: { staffId: 42, workDate: new Date("2026-10-01T00:00:00.000Z") },
+        },
+        create: expect.objectContaining({
           isDayOff: true,
           startTime: null,
           endTime: null,
@@ -115,7 +145,7 @@ describe("generateShiftDraftForStore", () => {
       {
         staffId: 42,
         workDate: new Date("2026-10-01T00:00:00.000Z"),
-        isDayOffRequested: false,
+        requestType: "reduced",
         preferredStartTime: new Date("1970-01-01T10:00:00.000Z"),
         preferredEndTime: new Date("1970-01-01T15:00:00.000Z"),
       },
