@@ -13,6 +13,8 @@ const PAGE_TITLES: Record<string, string> = {
   "/admin/menu": "メニュー・料金管理",
   "/admin/campaigns": "キャンペーン管理",
   "/admin/staff": "スタッフ管理",
+  "/admin/staff-shifts": "スタッフシフト管理",
+  "/admin/my-shift-requests": "シフト希望",
   "/admin/stores": "店舗管理",
   "/admin/reports": "売上・月報レポート",
   "/admin/segment-campaigns": "メール／LINE配信管理",
@@ -41,7 +43,7 @@ export function AdminHeader() {
 
   return (
     <header className="flex items-center justify-between border-b border-neutral-200 bg-neutral-0 px-6 py-3">
-      <h1 className="font-heading text-lg text-primary-700">{title}</h1>
+      <h1 className="text-lg text-primary-700">{title}</h1>
       <div className="flex items-center gap-2">
         <NotificationBell />
         <AccountMenu />
