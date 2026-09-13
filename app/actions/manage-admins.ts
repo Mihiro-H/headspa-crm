@@ -113,7 +113,7 @@ export type ResendInviteResult =
   | { status: "already_active" }
   | { status: "not_found" };
 
-// Brevo未設定期間中に送信できなかった招待、または期限切れになった招待をやり直すための再送機能。
+// Resend未設定期間中に送信できなかった招待、または期限切れになった招待をやり直すための再送機能。
 export async function resendAdminInvite(adminId: number): Promise<ResendInviteResult> {
   const session = await auth();
   if (!session?.user || session.user.role !== "hq") {

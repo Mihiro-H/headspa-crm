@@ -9,36 +9,39 @@ export type SendEmailResult =
   | { status: "not_configured" }
   | { status: "failed"; error: string };
 
-const BREVO_SEND_URL = "https://api.brevo.com/v3/smtp/email";
-const SENDER_EMAIL = "no-reply@foresupa.example.com";
+const RESEND_SEND_URL = "https://api.resend.com/emails";
+// resend.devはResendが提供する検証不要の共有送信ドメイン。DNS認証なしで送信できる
+// 代わりに送信先が制限される場合がある（本番の宛先が届かない場合は、Resend側で
+// 独自ドメインを認証し、このSENDER_EMAILを差し替える）。
+const SENDER_EMAIL = "onboarding@resend.dev";
 const SENDER_NAME = "フォレスパ";
 
 export async function sendEmail(params: SendEmailParams): Promise<SendEmailResult> {
-  const apiKey = process.env.BREVO_API_KEY;
+  const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     return { status: "not_configured" };
   }
 
   try {
-    const response = await fetch(BREVO_SEND_URL, {
+    const response = await fetch(RESEND_SEND_URL, {
       method: "POST",
       headers: {
-        "api-key": apiKey,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        sender: { email: SENDER_EMAIL, name: SENDER_NAME },
-        to: [{ email: params.to }],
+        from: `${SENDER_NAME} <${SENDER_EMAIL}>`,
+        to: [params.to],
         subject: params.subject,
         // テンプレート本文はプレーンテキスト（textarea編集、HTML入力欄なし）のため
-        // textContentで送信する。htmlContentにすると差し込みタグ（会員が自由入力できる
+        // textで送信する。htmlにすると差し込みタグ（会員が自由入力できる
         // 氏名等）がHTMLとして解釈されエスケープされずに描画されるインジェクションリスクがある。
-        textContent: params.body,
+        text: params.body,
       }),
     });
 
     if (!response.ok) {
-      return { status: "failed", error: `Brevo API error: ${response.status}` };
+      return { status: "failed", error: `Resend API error: ${response.status}` };
     }
     return { status: "sent" };
   } catch (error) {

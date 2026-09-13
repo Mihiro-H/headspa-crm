@@ -24,7 +24,7 @@ const ROLE_LABEL: Record<AdminRole, string> = {
 const EMAIL_STATUS_MESSAGE: Record<"sent" | "not_configured" | "failed", string> = {
   sent: "招待メールを送信しました。",
   not_configured:
-    "メール送信が未設定のため招待メールは送信されませんでした。Brevo設定後、一覧の「招待を再送信」から送信してください。",
+    "メール送信が未設定のため招待メールは送信されませんでした。Resend設定後、一覧の「招待を再送信」から送信してください。",
   failed: "招待メールの送信に失敗しました。後ほど「招待を再送信」からやり直してください。",
 };
 
@@ -271,7 +271,7 @@ export default function AdminAccountsPage() {
             <div className="flex flex-col gap-2 rounded-lg border border-primary-200 bg-primary-50 p-3">
               <p className="text-sm text-neutral-700">{inviteResult.message}</p>
               <p className="text-xs text-neutral-500">
-                招待リンク（Brevo未設定の間はこちらを手動で共有してください）:
+                招待リンク（Resend未設定の間はこちらを手動で共有してください）:
               </p>
               <p className="select-all break-all rounded-md bg-neutral-0 px-3 py-2 font-mono text-xs">
                 {inviteResult.inviteUrl}
