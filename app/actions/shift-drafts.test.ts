@@ -39,6 +39,18 @@ describe("listShiftDraftsForStore", () => {
     expect(result).toEqual({ status: "unauthorized" });
   });
 
+  it("returns unauthorized when the target store is outside the manager's scope", async () => {
+    vi.mocked(getCurrentAdminStoreScope).mockResolvedValue({
+      isUnrestricted: false,
+      storeIds: [2],
+    });
+
+    const result = await listShiftDraftsForStore(1, "2026-10");
+
+    expect(result).toEqual({ status: "unauthorized" });
+    expect(prisma.staff.findMany).not.toHaveBeenCalled();
+  });
+
   it("returns drafts grouped by staffId", async () => {
     vi.mocked(prisma.staff.findMany).mockResolvedValue([{ id: 42 }] as never);
     vi.mocked(prisma.staffShiftDraft.findMany).mockResolvedValue([
@@ -161,6 +173,27 @@ describe("confirmShiftDraftForStore", () => {
 
     expect(result).toEqual({ status: "unauthorized" });
     expect(prisma.staffShift.upsert).not.toHaveBeenCalled();
+  });
+
+  it("returns unauthorized when the target store is outside the manager's scope", async () => {
+    vi.mocked(getCurrentAdminStoreScope).mockResolvedValue({
+      isUnrestricted: false,
+      storeIds: [2],
+    });
+
+    const result = await confirmShiftDraftForStore(1, "2026-10");
+
+    expect(result).toEqual({ status: "unauthorized" });
+    expect(prisma.staffShift.upsert).not.toHaveBeenCalled();
+  });
+
+  it("fetches only active staff for the store", async () => {
+    vi.mocked(prisma.staff.findMany).mockResolvedValue([{ id: 42 }] as never);
+    vi.mocked(prisma.staffShiftDraft.findMany).mockResolvedValue([] as never);
+
+    await confirmShiftDraftForStore(1, "2026-10");
+
+    expect(prisma.staff.findMany).toHaveBeenCalledWith({ where: { storeId: 1, isActive: true } });
   });
 
   it("copies every draft row for the store's staff into StaffShift", async () => {

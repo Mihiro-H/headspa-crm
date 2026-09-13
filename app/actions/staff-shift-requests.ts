@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { dbTimeToMinutes, minutesToLabel } from "@/lib/reservation/time";
+import { dbTimeToMinutes, minutesToLabel, monthRange } from "@/lib/reservation/time";
 import { getCurrentAdminStoreScope } from "./current-admin-scope";
 
 export interface StaffShiftRequestItem {
@@ -10,14 +10,6 @@ export interface StaffShiftRequestItem {
   isDayOffRequested: boolean;
   preferredStartMinutes: number | null;
   preferredEndMinutes: number | null;
-}
-
-function monthRange(yearMonth: string): { start: Date; end: Date } {
-  const [year, month] = yearMonth.split("-").map(Number);
-  return {
-    start: new Date(Date.UTC(year, month - 1, 1)),
-    end: new Date(Date.UTC(year, month, 0)),
-  };
 }
 
 function toItem(r: {

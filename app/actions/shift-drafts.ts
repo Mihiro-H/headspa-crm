@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { dbTimeToMinutes, minutesToLabel } from "@/lib/reservation/time";
+import { dbTimeToMinutes, monthRange, timeOrNull } from "@/lib/reservation/time";
 import { getCurrentAdminStoreScope } from "./current-admin-scope";
 
 export interface ShiftDraftItem {
@@ -10,20 +10,6 @@ export interface ShiftDraftItem {
   isDayOff: boolean;
   startMinutes: number | null;
   endMinutes: number | null;
-}
-
-function monthRange(yearMonth: string): { start: Date; end: Date } {
-  const [year, month] = yearMonth.split("-").map(Number);
-  return {
-    start: new Date(Date.UTC(year, month - 1, 1)),
-    end: new Date(Date.UTC(year, month, 0)),
-  };
-}
-
-function timeOrNull(minutes: number | null): Date | null {
-  return minutes !== null
-    ? new Date(`1970-01-01T${minutesToLabel(minutes)}:00.000Z`)
-    : null;
 }
 
 async function requireManagerForStore(storeId: number): Promise<boolean> {
