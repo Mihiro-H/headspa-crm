@@ -8,6 +8,7 @@ import {
   type StaffShiftRequestItem,
 } from "@/app/actions/staff-shift-requests";
 import { minutesToLabel } from "@/lib/reservation/time";
+import { resolveSaveOutcome } from "@/lib/scheduling/resolve-save-outcome";
 
 function yearMonthWithOffset(monthOffset: number): string {
   const d = new Date();
@@ -78,12 +79,13 @@ export default function MyShiftRequestsPage() {
       preferredEndMinutes: next.preferredEndMinutes,
     });
 
-    // 自分より後に同じ日付への変更が発行されていたら、自分は既に古いリクエストなので
-    // 失敗していてもロールバックしない(新しい変更を消してしまうため)
-    const isStale = requestSeqRef.current.get(workDate) !== seq;
-    if (isStale) return;
+    const outcome = resolveSaveOutcome({
+      latestSeqForDate: requestSeqRef.current.get(workDate) ?? seq,
+      ownSeq: seq,
+      saveSucceeded: result.status === "saved",
+    });
 
-    if (result.status !== "saved") {
+    if (outcome === "rollback") {
       setRequests((prev) => {
         const rolledBack = new Map(prev);
         if (previous) {
