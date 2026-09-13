@@ -41,10 +41,17 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
     });
 
     if (!response.ok) {
-      return { status: "failed", error: `Resend API error: ${response.status}` };
+      const body = await response.text();
+      const error = `Resend API error: ${response.status} ${body}`;
+      // 呼び出し元（manage-admins.ts等）はemailStatus文字列だけを見てこの詳細を
+      // 捨ててしまうため、ここでログしないと失敗理由を追えなくなる（APIキー自体は含めない）。
+      console.error("sendEmail failed:", error);
+      return { status: "failed", error };
     }
     return { status: "sent" };
   } catch (error) {
-    return { status: "failed", error: error instanceof Error ? error.message : "unknown error" };
+    const message = error instanceof Error ? error.message : "unknown error";
+    console.error("sendEmail failed:", message);
+    return { status: "failed", error: message };
   }
 }

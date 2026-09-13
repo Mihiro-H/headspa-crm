@@ -50,21 +50,40 @@ describe("sendEmail", () => {
     expect(sentBody.html).toBeUndefined();
   });
 
-  it("returns failed when the Resend API responds with an error status", async () => {
+  it("returns failed with the response body when the Resend API responds with an error status", async () => {
     process.env.RESEND_API_KEY = "test-api-key";
-    vi.mocked(fetch).mockResolvedValue({ ok: false, status: 401 } as Response);
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 403,
+      text: () => Promise.resolve('{"statusCode":403,"message":"domain is not verified"}'),
+    } as Response);
 
     const result = await sendEmail({ to: "a@example.com", subject: "件名", body: "本文" });
 
-    expect(result).toEqual({ status: "failed", error: "Resend API error: 401" });
+    expect(result).toEqual({
+      status: "failed",
+      error: 'Resend API error: 403 {"statusCode":403,"message":"domain is not verified"}',
+    });
+    // APIキー自体はログに出さず、失敗の原因（ステータス・レスポンス本文）だけをターミナルに
+    // 残す。呼び出し元（manage-admins.ts等）はemailStatus文字列しか受け取らず詳細を捨てて
+    // しまうため、ここでログしないと開発者が失敗理由を追えなくなる。
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "sendEmail failed:",
+      'Resend API error: 403 {"statusCode":403,"message":"domain is not verified"}',
+    );
+    consoleErrorSpy.mockRestore();
   });
 
-  it("returns failed when fetch throws", async () => {
+  it("returns failed and logs when fetch throws", async () => {
     process.env.RESEND_API_KEY = "test-api-key";
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     vi.mocked(fetch).mockRejectedValue(new Error("network error"));
 
     const result = await sendEmail({ to: "a@example.com", subject: "件名", body: "本文" });
 
     expect(result).toEqual({ status: "failed", error: "network error" });
+    expect(consoleErrorSpy).toHaveBeenCalledWith("sendEmail failed:", "network error");
+    consoleErrorSpy.mockRestore();
   });
 });
