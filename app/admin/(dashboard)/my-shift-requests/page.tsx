@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   getMyStaffId,
   getStaffShiftRequests,
@@ -44,6 +44,10 @@ export default function MyShiftRequestsPage() {
   const [yearMonth, setYearMonth] = useState(yearMonthWithOffset(1));
   const [requests, setRequests] = useState<Map<string, StaffShiftRequestItem>>(new Map());
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // 同一日付への変更が短時間に連続した場合、古いリクエストの失敗結果で
+  // 新しい変更を誤って巻き戻さないよう、日付ごとに連番を振って
+  // 「自分が最後に投げたリクエストか」を判定する
+  const requestSeqRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     getMyStaffId().then(setStaffId);
@@ -63,6 +67,9 @@ export default function MyShiftRequestsPage() {
     setRequests((prev) => new Map(prev).set(workDate, next));
     setErrorMessage(null);
 
+    const seq = (requestSeqRef.current.get(workDate) ?? 0) + 1;
+    requestSeqRef.current.set(workDate, seq);
+
     const result = await saveStaffShiftRequest({
       staffId,
       workDate,
@@ -71,8 +78,12 @@ export default function MyShiftRequestsPage() {
       preferredEndMinutes: next.preferredEndMinutes,
     });
 
+    // 自分より後に同じ日付への変更が発行されていたら、自分は既に古いリクエストなので
+    // 失敗していてもロールバックしない(新しい変更を消してしまうため)
+    const isStale = requestSeqRef.current.get(workDate) !== seq;
+    if (isStale) return;
+
     if (result.status !== "saved") {
-      // 保存に失敗した場合、画面上だけ「保存済み」に見えることを防ぐため元の値に戻す
       setRequests((prev) => {
         const rolledBack = new Map(prev);
         if (previous) {
