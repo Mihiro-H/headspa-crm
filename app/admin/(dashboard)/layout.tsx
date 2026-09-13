@@ -3,6 +3,8 @@ import Image from "next/image";
 import {
   LayoutDashboard,
   CalendarDays,
+  CalendarClock,
+  CalendarCheck,
   Users,
   Tag,
   PhoneCall,
@@ -29,6 +31,8 @@ const NAV_ITEMS = [
   { href: "/admin/menu", label: "メニュー・料金管理", icon: ListChecks },
   { href: "/admin/campaigns", label: "キャンペーン管理", icon: Percent },
   { href: "/admin/staff", label: "スタッフ管理", icon: UserCog },
+  { href: "/admin/staff-shifts", label: "スタッフシフト管理", icon: CalendarClock },
+  { href: "/admin/my-shift-requests", label: "シフト希望", icon: CalendarCheck },
   { href: "/admin/stores", label: "店舗管理", icon: Store },
   { href: "/admin/reports", label: "売上・月報レポート", icon: ChartColumn },
   { href: "/admin/segment-campaigns", label: "メール／LINE配信管理", icon: Send },
