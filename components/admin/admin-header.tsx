@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { NotificationBell } from "@/components/admin/notification-bell";
+import { AccountMenu } from "@/components/admin/account-menu";
 
 const PAGE_TITLES: Record<string, string> = {
   "/admin/dashboard": "ダッシュボード",
@@ -41,7 +42,10 @@ export function AdminHeader() {
   return (
     <header className="flex items-center justify-between border-b border-neutral-200 bg-neutral-0 px-6 py-3">
       <h1 className="font-heading text-lg text-primary-700">{title}</h1>
-      <NotificationBell />
+      <div className="flex items-center gap-2">
+        <NotificationBell />
+        <AccountMenu />
+      </div>
     </header>
   );
 }
