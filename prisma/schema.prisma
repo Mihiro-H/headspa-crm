@@ -89,14 +89,22 @@ model StaffShift {
   @@map("staff_shifts")
 }
 
+enum StaffShiftRequestType {
+  full
+  day_off
+  reduced
+
+  @@map("staff_shift_request_type")
+}
+
 model StaffShiftRequest {
-  id                 Int       @id @default(autoincrement()) @map("request_id")
-  staffId            Int       @map("staff_id")
-  workDate           DateTime  @map("work_date") @db.Date
-  isDayOffRequested  Boolean   @default(false) @map("is_day_off_requested")
-  preferredStartTime DateTime? @map("preferred_start_time") @db.Time()
-  preferredEndTime   DateTime? @map("preferred_end_time") @db.Time()
-  updatedAt          DateTime  @updatedAt @map("updated_at")
+  id                 Int                   @id @default(autoincrement()) @map("request_id")
+  staffId            Int                   @map("staff_id")
+  workDate           DateTime              @map("work_date") @db.Date
+  requestType        StaffShiftRequestType @default(full) @map("request_type")
+  preferredStartTime DateTime?             @map("preferred_start_time") @db.Time()
+  preferredEndTime   DateTime?             @map("preferred_end_time") @db.Time()
+  updatedAt          DateTime              @updatedAt @map("updated_at")
 
   staff Staff @relation(fields: [staffId], references: [id])
 
