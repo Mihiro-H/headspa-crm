@@ -8,8 +8,9 @@ vi.mock("@/lib/db", () => ({
   prisma: {
     store: { findUnique: vi.fn() },
     staff: { findMany: vi.fn() },
-    staffShiftRequest: { findUnique: vi.fn() },
+    staffShiftRequest: { findMany: vi.fn() },
     staffShiftDraft: { upsert: vi.fn() },
+    $transaction: vi.fn(),
   },
 }));
 
@@ -37,6 +38,9 @@ describe("generateShiftDraftForStore", () => {
       isUnrestricted: false,
       storeIds: [1],
     });
+    // $transactionはPromise配列をまとめて実行するモック実装（実DBのトランザクションは張らない）
+    vi.mocked(prisma.$transaction).mockImplementation(((ops: Promise<unknown>[]) =>
+      Promise.all(ops)) as never);
   });
 
   it("returns unauthorized for a staff-role caller", async () => {
@@ -59,11 +63,30 @@ describe("generateShiftDraftForStore", () => {
     expect(result).toEqual({ status: "unauthorized" });
   });
 
+  it("returns unauthorized when the store does not exist", async () => {
+    vi.mocked(prisma.store.findUnique).mockResolvedValue(null as never);
+
+    const result = await generateShiftDraftForStore(1, "2026-10");
+
+    expect(result).toEqual({ status: "unauthorized" });
+    expect(prisma.staffShiftDraft.upsert).not.toHaveBeenCalled();
+  });
+
+  it("fetches only active staff for the store", async () => {
+    vi.mocked(prisma.store.findUnique).mockResolvedValue(STORE as never);
+    vi.mocked(prisma.staff.findMany).mockResolvedValue([{ id: 42, storeId: 1 }] as never);
+    vi.mocked(prisma.staffShiftRequest.findMany).mockResolvedValue([] as never);
+
+    await generateShiftDraftForStore(1, "2026-10");
+
+    expect(prisma.staff.findMany).toHaveBeenCalledWith({ where: { storeId: 1, isActive: true } });
+  });
+
   it("generates one draft row per staff per day of the month, using each day's request", async () => {
     vi.mocked(prisma.store.findUnique).mockResolvedValue(STORE as never);
     vi.mocked(prisma.staff.findMany).mockResolvedValue([{ id: 42, storeId: 1 }] as never);
     // 2026年10月は31日。全ての日で希望なし（休み扱いになる想定）。
-    vi.mocked(prisma.staffShiftRequest.findUnique).mockResolvedValue(null as never);
+    vi.mocked(prisma.staffShiftRequest.findMany).mockResolvedValue([] as never);
 
     const result = await generateShiftDraftForStore(1, "2026-10");
 
@@ -88,21 +111,15 @@ describe("generateShiftDraftForStore", () => {
   it("reflects a submitted time-range request, clamped to store hours", async () => {
     vi.mocked(prisma.store.findUnique).mockResolvedValue(STORE as never);
     vi.mocked(prisma.staff.findMany).mockResolvedValue([{ id: 42, storeId: 1 }] as never);
-    vi.mocked(prisma.staffShiftRequest.findUnique).mockImplementation((({
-      where,
-    }: {
-      where: { staffId_workDate: { workDate: Date } };
-    }) => {
-      const workDate: Date = where.staffId_workDate.workDate;
-      if (workDate.getUTCDate() === 1) {
-        return Promise.resolve({
-          isDayOffRequested: false,
-          preferredStartTime: new Date("1970-01-01T10:00:00.000Z"),
-          preferredEndTime: new Date("1970-01-01T15:00:00.000Z"),
-        } as never);
-      }
-      return Promise.resolve(null);
-    }) as never);
+    vi.mocked(prisma.staffShiftRequest.findMany).mockResolvedValue([
+      {
+        staffId: 42,
+        workDate: new Date("2026-10-01T00:00:00.000Z"),
+        isDayOffRequested: false,
+        preferredStartTime: new Date("1970-01-01T10:00:00.000Z"),
+        preferredEndTime: new Date("1970-01-01T15:00:00.000Z"),
+      },
+    ] as never);
 
     await generateShiftDraftForStore(1, "2026-10");
 
@@ -119,5 +136,29 @@ describe("generateShiftDraftForStore", () => {
         }),
       }),
     );
+  });
+
+  it("aggregates the count across multiple staff members", async () => {
+    vi.mocked(prisma.store.findUnique).mockResolvedValue(STORE as never);
+    vi.mocked(prisma.staff.findMany).mockResolvedValue([
+      { id: 42, storeId: 1 },
+      { id: 43, storeId: 1 },
+    ] as never);
+    vi.mocked(prisma.staffShiftRequest.findMany).mockResolvedValue([] as never);
+
+    const result = await generateShiftDraftForStore(1, "2026-10");
+
+    expect(result).toEqual({ status: "generated", count: 62 });
+    expect(prisma.staffShiftDraft.upsert).toHaveBeenCalledTimes(62);
+  });
+
+  it("wraps all upserts in a single transaction so a mid-loop failure cannot leave a partially-applied month", async () => {
+    vi.mocked(prisma.store.findUnique).mockResolvedValue(STORE as never);
+    vi.mocked(prisma.staff.findMany).mockResolvedValue([{ id: 42, storeId: 1 }] as never);
+    vi.mocked(prisma.staffShiftRequest.findMany).mockResolvedValue([] as never);
+
+    await generateShiftDraftForStore(1, "2026-10");
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
   });
 });

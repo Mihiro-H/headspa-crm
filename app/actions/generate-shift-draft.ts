@@ -16,6 +16,14 @@ function daysInMonth(yearMonth: string): number {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
+function monthRange(yearMonth: string): { start: Date; end: Date } {
+  const [year, month] = yearMonth.split("-").map(Number);
+  return {
+    start: new Date(Date.UTC(year, month - 1, 1)),
+    end: new Date(Date.UTC(year, month, 0)),
+  };
+}
+
 function workDateFor(yearMonth: string, day: number): Date {
   const [year, month] = yearMonth.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day));
@@ -25,6 +33,10 @@ function timeOrNull(minutes: number | null): Date | null {
   return minutes !== null
     ? new Date(`1970-01-01T${minutesToLabel(minutes)}:00.000Z`)
     : null;
+}
+
+function requestKey(staffId: number, workDate: Date): string {
+  return `${staffId}-${workDate.toISOString()}`;
 }
 
 export async function generateShiftDraftForStore(
@@ -47,15 +59,20 @@ export async function generateShiftDraftForStore(
 
   const staffList = await prisma.staff.findMany({ where: { storeId, isActive: true } });
   const totalDays = daysInMonth(yearMonth);
+  const { start, end } = monthRange(yearMonth);
 
-  let count = 0;
+  // 対象月の希望を一括取得し、日×スタッフごとの逐次クエリ(N+1)を避ける
+  // (staff-shift-requests.tsのlistShiftRequestsForStoreと同じ一括取得パターン)。
+  const requests = await prisma.staffShiftRequest.findMany({
+    where: { staffId: { in: staffList.map((s) => s.id) }, workDate: { gte: start, lte: end } },
+  });
+  const requestByKey = new Map(requests.map((r) => [requestKey(r.staffId, r.workDate), r]));
+
+  const upsertOps = [];
   for (const staff of staffList) {
     for (let day = 1; day <= totalDays; day++) {
       const workDate = workDateFor(yearMonth, day);
-
-      const request = await prisma.staffShiftRequest.findUnique({
-        where: { staffId_workDate: { staffId: staff.id, workDate } },
-      });
+      const request = requestByKey.get(requestKey(staff.id, workDate)) ?? null;
 
       const storeHours = getStoreOpenHours(store, workDate);
       const draft = deriveDraftShift(
@@ -79,14 +96,19 @@ export async function generateShiftDraftForStore(
         endTime: timeOrNull(draft.endMinutes),
       };
 
-      await prisma.staffShiftDraft.upsert({
-        where: { staffId_workDate: { staffId: staff.id, workDate } },
-        create: { staffId: staff.id, workDate, ...data },
-        update: data,
-      });
-      count++;
+      upsertOps.push(
+        prisma.staffShiftDraft.upsert({
+          where: { staffId_workDate: { staffId: staff.id, workDate } },
+          create: { staffId: staff.id, workDate, ...data },
+          update: data,
+        }),
+      );
     }
   }
 
-  return { status: "generated", count };
+  // $transactionでまとめて実行することで、途中で1件失敗した場合に一部の日だけ
+  // 更新された中途半端な状態が残ることを防ぐ(全件成功 or 全件ロールバック)。
+  await prisma.$transaction(upsertOps);
+
+  return { status: "generated", count: upsertOps.length };
 }
