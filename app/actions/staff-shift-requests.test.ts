@@ -125,6 +125,47 @@ describe("getStaffShiftRequests", () => {
     expect(result).toEqual([]);
     expect(prisma.staffShiftRequest.findMany).not.toHaveBeenCalled();
   });
+
+  it("returns the requests for an hq caller regardless of store scope", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "5", role: "hq" } } as never);
+    vi.mocked(prisma.admin.findUnique).mockResolvedValue({ id: 5, staffId: null } as never);
+    vi.mocked(getCurrentAdminStoreScope).mockResolvedValue({
+      isUnrestricted: true,
+      storeIds: [],
+    });
+    vi.mocked(prisma.staff.findUnique).mockResolvedValue({ id: 42, storeId: 1 } as never);
+    vi.mocked(prisma.staffShiftRequest.findMany).mockResolvedValue([
+      {
+        workDate: new Date("2026-10-01T00:00:00.000Z"),
+        isDayOffRequested: false,
+        preferredStartTime: new Date("1970-01-01T10:00:00.000Z"),
+        preferredEndTime: new Date("1970-01-01T15:00:00.000Z"),
+      },
+    ] as never);
+
+    const result = await getStaffShiftRequests(42, "2026-10");
+
+    expect(result).toEqual([
+      {
+        workDate: "2026-10-01",
+        isDayOffRequested: false,
+        preferredStartMinutes: 600,
+        preferredEndMinutes: 900,
+      },
+    ]);
+    expect(prisma.staffShiftRequest.findMany).toHaveBeenCalled();
+  });
+
+  it("returns an empty array without querying shift requests when the staffId does not exist", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "3", role: "manager" } } as never);
+    vi.mocked(prisma.admin.findUnique).mockResolvedValue({ id: 3, staffId: null } as never);
+    vi.mocked(prisma.staff.findUnique).mockResolvedValue(null as never);
+
+    const result = await getStaffShiftRequests(999, "2026-10");
+
+    expect(result).toEqual([]);
+    expect(prisma.staffShiftRequest.findMany).not.toHaveBeenCalled();
+  });
 });
 
 describe("saveStaffShiftRequest", () => {
@@ -176,6 +217,38 @@ describe("saveStaffShiftRequest", () => {
         isDayOffRequested: false,
         preferredStartTime: new Date("1970-01-01T10:00:00.000Z"),
         preferredEndTime: new Date("1970-01-01T15:00:00.000Z"),
+      },
+    });
+  });
+
+  it("upserts null preferred times when a day-off is requested without preferred times", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "7", role: "staff" } } as never);
+    vi.mocked(prisma.admin.findUnique).mockResolvedValue({ id: 7, staffId: 42 } as never);
+
+    const result = await saveStaffShiftRequest({
+      staffId: 42,
+      workDate: "2026-10-01",
+      isDayOffRequested: true,
+      preferredStartMinutes: null,
+      preferredEndMinutes: null,
+    });
+
+    expect(result).toEqual({ status: "saved" });
+    expect(prisma.staffShiftRequest.upsert).toHaveBeenCalledWith({
+      where: {
+        staffId_workDate: { staffId: 42, workDate: new Date("2026-10-01T00:00:00.000Z") },
+      },
+      create: {
+        staffId: 42,
+        workDate: new Date("2026-10-01T00:00:00.000Z"),
+        isDayOffRequested: true,
+        preferredStartTime: null,
+        preferredEndTime: null,
+      },
+      update: {
+        isDayOffRequested: true,
+        preferredStartTime: null,
+        preferredEndTime: null,
       },
     });
   });
@@ -238,5 +311,19 @@ describe("listShiftRequestsForStore", () => {
         ],
       },
     });
+  });
+
+  it("returns an empty requestsByStaffId when the store has no active staff", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "3", role: "manager" } } as never);
+    vi.mocked(getCurrentAdminStoreScope).mockResolvedValue({
+      isUnrestricted: false,
+      storeIds: [1],
+    });
+    vi.mocked(prisma.staff.findMany).mockResolvedValue([] as never);
+    vi.mocked(prisma.staffShiftRequest.findMany).mockResolvedValue([] as never);
+
+    const result = await listShiftRequestsForStore(1, "2026-10");
+
+    expect(result).toEqual({ status: "ok", requestsByStaffId: {} });
   });
 });
