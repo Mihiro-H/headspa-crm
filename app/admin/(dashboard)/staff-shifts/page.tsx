@@ -39,11 +39,15 @@ function timeInputFromMinutes(minutes: number | null): string {
 
 function requestSummary(item: StaffShiftRequestItem | undefined): string {
   if (!item) return "未提出";
-  if (item.isDayOffRequested) return "休み希望";
-  if (item.preferredStartMinutes !== null && item.preferredEndMinutes !== null) {
-    return `${timeInputFromMinutes(item.preferredStartMinutes)}〜${timeInputFromMinutes(item.preferredEndMinutes)}`;
+  if (item.requestType === "day_off") return "休み希望";
+  if (item.requestType === "full") return "出勤";
+  // requestType === "reduced"
+  if (item.preferredStartMinutes !== null || item.preferredEndMinutes !== null) {
+    const start = item.preferredStartMinutes !== null ? timeInputFromMinutes(item.preferredStartMinutes) : "?";
+    const end = item.preferredEndMinutes !== null ? timeInputFromMinutes(item.preferredEndMinutes) : "?";
+    return `時短 ${start}〜${end}`;
   }
-  return "未提出";
+  return "不備(時短希望・時間未入力)";
 }
 
 export default function StaffShiftsPage() {
