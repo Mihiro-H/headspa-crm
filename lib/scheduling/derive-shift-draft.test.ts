@@ -4,30 +4,54 @@ import { deriveDraftShift } from "./derive-shift-draft";
 const STORE_HOURS = { openMinutes: 660, closeMinutes: 1110 }; // 11:00-18:30
 
 describe("deriveDraftShift", () => {
-  it("returns day off when there is no request", () => {
+  it("returns full attendance when there is no request (未提出)", () => {
     const result = deriveDraftShift(null, STORE_HOURS);
-    expect(result).toEqual({ isDayOff: true, startMinutes: null, endMinutes: null });
+    expect(result).toEqual({ isDayOff: false, startMinutes: 660, endMinutes: 1110 });
   });
 
-  it("returns day off when the request asks for a day off", () => {
+  it("returns full attendance when requestType is 'full', ignoring any preferred times", () => {
     const result = deriveDraftShift(
-      { isDayOffRequested: true, preferredStartMinutes: null, preferredEndMinutes: null },
+      { requestType: "full", preferredStartMinutes: 700, preferredEndMinutes: 800 },
+      STORE_HOURS,
+    );
+    expect(result).toEqual({ isDayOff: false, startMinutes: 660, endMinutes: 1110 });
+  });
+
+  it("returns day off when requestType is 'day_off'", () => {
+    const result = deriveDraftShift(
+      { requestType: "day_off", preferredStartMinutes: null, preferredEndMinutes: null },
       STORE_HOURS,
     );
     expect(result).toEqual({ isDayOff: true, startMinutes: null, endMinutes: null });
   });
 
-  it("returns day off when times are missing despite not being a day-off request", () => {
+  it("returns day off when requestType is 'reduced' but both times are missing (不備)", () => {
     const result = deriveDraftShift(
-      { isDayOffRequested: false, preferredStartMinutes: null, preferredEndMinutes: 1000 },
+      { requestType: "reduced", preferredStartMinutes: null, preferredEndMinutes: null },
       STORE_HOURS,
     );
     expect(result).toEqual({ isDayOff: true, startMinutes: null, endMinutes: null });
   });
 
-  it("uses the requested time range as-is when it fits within store hours", () => {
+  it("fills in the store's opening time when only the end time is given", () => {
     const result = deriveDraftShift(
-      { isDayOffRequested: false, preferredStartMinutes: 700, preferredEndMinutes: 1000 },
+      { requestType: "reduced", preferredStartMinutes: null, preferredEndMinutes: 1000 },
+      STORE_HOURS,
+    );
+    expect(result).toEqual({ isDayOff: false, startMinutes: 660, endMinutes: 1000 });
+  });
+
+  it("fills in the store's closing time when only the start time is given", () => {
+    const result = deriveDraftShift(
+      { requestType: "reduced", preferredStartMinutes: 700, preferredEndMinutes: null },
+      STORE_HOURS,
+    );
+    expect(result).toEqual({ isDayOff: false, startMinutes: 700, endMinutes: 1110 });
+  });
+
+  it("uses the requested time range as-is when both are given and fit within store hours", () => {
+    const result = deriveDraftShift(
+      { requestType: "reduced", preferredStartMinutes: 700, preferredEndMinutes: 1000 },
       STORE_HOURS,
     );
     expect(result).toEqual({ isDayOff: false, startMinutes: 700, endMinutes: 1000 });
@@ -35,7 +59,7 @@ describe("deriveDraftShift", () => {
 
   it("clamps a requested start time earlier than store open", () => {
     const result = deriveDraftShift(
-      { isDayOffRequested: false, preferredStartMinutes: 500, preferredEndMinutes: 1000 },
+      { requestType: "reduced", preferredStartMinutes: 500, preferredEndMinutes: 1000 },
       STORE_HOURS,
     );
     expect(result).toEqual({ isDayOff: false, startMinutes: 660, endMinutes: 1000 });
@@ -43,16 +67,15 @@ describe("deriveDraftShift", () => {
 
   it("clamps a requested end time later than store close", () => {
     const result = deriveDraftShift(
-      { isDayOffRequested: false, preferredStartMinutes: 700, preferredEndMinutes: 1200 },
+      { requestType: "reduced", preferredStartMinutes: 700, preferredEndMinutes: 1200 },
       STORE_HOURS,
     );
     expect(result).toEqual({ isDayOff: false, startMinutes: 700, endMinutes: 1110 });
   });
 
   it("falls back to a day off when clamping collapses the range to zero or negative width", () => {
-    // 希望が丸ごと営業時間外（開店前に終わる希望）→ クランプ後 start(660) >= end(660)
     const result = deriveDraftShift(
-      { isDayOffRequested: false, preferredStartMinutes: 500, preferredEndMinutes: 600 },
+      { requestType: "reduced", preferredStartMinutes: 500, preferredEndMinutes: 600 },
       STORE_HOURS,
     );
     expect(result).toEqual({ isDayOff: true, startMinutes: null, endMinutes: null });
