@@ -5,10 +5,12 @@ import {
   getMyStaffId,
   getStaffShiftRequests,
   saveStaffShiftRequest,
+  type ShiftRequestType,
   type StaffShiftRequestItem,
 } from "@/app/actions/staff-shift-requests";
 import { minutesToLabel } from "@/lib/reservation/time";
 import { resolveSaveOutcome } from "@/lib/scheduling/resolve-save-outcome";
+import { isShiftRequestComplete } from "@/lib/scheduling/shift-request-completion";
 
 function yearMonthWithOffset(monthOffset: number): string {
   const d = new Date();
@@ -33,9 +35,17 @@ function timeInputFromMinutes(minutes: number | null): string {
   return minutes === null ? "" : minutesToLabel(minutes);
 }
 
+const REQUEST_TYPES: readonly ShiftRequestType[] = ["full", "day_off", "reduced"];
+
+const REQUEST_TYPE_LABELS: Record<ShiftRequestType, string> = {
+  full: "出勤",
+  day_off: "休み希望",
+  reduced: "時短希望",
+};
+
 const EMPTY_ITEM = (workDate: string): StaffShiftRequestItem => ({
   workDate,
-  isDayOffRequested: false,
+  requestType: "full",
   preferredStartMinutes: null,
   preferredEndMinutes: null,
 });
@@ -74,7 +84,7 @@ export default function MyShiftRequestsPage() {
     const result = await saveStaffShiftRequest({
       staffId,
       workDate,
-      isDayOffRequested: next.isDayOffRequested,
+      requestType: next.requestType,
       preferredStartMinutes: next.preferredStartMinutes,
       preferredEndMinutes: next.preferredEndMinutes,
     });
@@ -99,6 +109,21 @@ export default function MyShiftRequestsPage() {
     }
   }
 
+  function handleRequestTypeChange(workDate: string, requestType: ShiftRequestType) {
+    const item = requests.get(workDate);
+    if (requestType === "reduced") {
+      // 時短希望に切り替えた直後は、既存の時刻があればそれを引き継ぐ
+      handleChange(workDate, {
+        requestType,
+        preferredStartMinutes: item?.preferredStartMinutes ?? null,
+        preferredEndMinutes: item?.preferredEndMinutes ?? null,
+      });
+    } else {
+      // 出勤・休み希望では時刻は使わないのでクリアする
+      handleChange(workDate, { requestType, preferredStartMinutes: null, preferredEndMinutes: null });
+    }
+  }
+
   if (staffId === undefined) {
     return <p className="text-sm text-neutral-500">読み込み中...</p>;
   }
@@ -109,6 +134,9 @@ export default function MyShiftRequestsPage() {
       </p>
     );
   }
+
+  const days = daysInYearMonth(yearMonth);
+  const completeCount = days.filter((d) => isShiftRequestComplete(requests.get(d))).length;
 
   return (
     <div className="flex flex-col gap-4">
@@ -128,6 +156,10 @@ export default function MyShiftRequestsPage() {
         })}
       </select>
 
+      <p className="text-sm text-neutral-600">
+        {days.length}日中{completeCount}件完了・{days.length - completeCount}件不備
+      </p>
+
       {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
 
       <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-0">
@@ -135,37 +167,40 @@ export default function MyShiftRequestsPage() {
           <thead>
             <tr className="border-b border-neutral-200 bg-neutral-50 text-left text-neutral-500">
               <th scope="col" className="p-2 font-medium">日付</th>
-              <th scope="col" className="p-2 font-medium">休み希望</th>
+              <th scope="col" className="p-2 font-medium">希望区分</th>
               <th scope="col" className="p-2 font-medium">希望開始</th>
               <th scope="col" className="p-2 font-medium">希望終了</th>
             </tr>
           </thead>
           <tbody>
-            {daysInYearMonth(yearMonth).map((workDate) => {
+            {days.map((workDate) => {
               const item = requests.get(workDate);
-              const isDayOff = item?.isDayOffRequested ?? false;
+              const requestType = item?.requestType ?? "full";
+              const isReduced = requestType === "reduced";
               return (
                 <tr key={workDate} className="border-b border-neutral-100 last:border-0">
                   <td className="p-2 text-neutral-800">{workDate}</td>
                   <td className="p-2">
-                    <input
-                      type="checkbox"
-                      aria-label={`${workDate} 休み希望`}
-                      checked={isDayOff}
-                      onChange={(e) =>
-                        handleChange(workDate, {
-                          isDayOffRequested: e.target.checked,
-                          preferredStartMinutes: e.target.checked ? null : item?.preferredStartMinutes ?? null,
-                          preferredEndMinutes: e.target.checked ? null : item?.preferredEndMinutes ?? null,
-                        })
-                      }
-                    />
+                    <div className="flex items-center gap-3">
+                      {REQUEST_TYPES.map((type) => (
+                        <label key={type} className="flex items-center gap-1 text-xs text-neutral-700">
+                          <input
+                            type="radio"
+                            name={`request-type-${workDate}`}
+                            aria-label={`${workDate} ${REQUEST_TYPE_LABELS[type]}`}
+                            checked={requestType === type}
+                            onChange={() => handleRequestTypeChange(workDate, type)}
+                          />
+                          {REQUEST_TYPE_LABELS[type]}
+                        </label>
+                      ))}
+                    </div>
                   </td>
                   <td className="p-2">
                     <input
                       type="time"
                       aria-label={`${workDate} 希望開始時刻`}
-                      disabled={isDayOff}
+                      disabled={!isReduced}
                       value={timeInputFromMinutes(item?.preferredStartMinutes ?? null)}
                       onChange={(e) =>
                         handleChange(workDate, {
@@ -179,7 +214,7 @@ export default function MyShiftRequestsPage() {
                     <input
                       type="time"
                       aria-label={`${workDate} 希望終了時刻`}
-                      disabled={isDayOff}
+                      disabled={!isReduced}
                       value={timeInputFromMinutes(item?.preferredEndMinutes ?? null)}
                       onChange={(e) =>
                         handleChange(workDate, {
