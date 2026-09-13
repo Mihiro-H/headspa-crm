@@ -67,7 +67,7 @@ describe("getStaffShiftRequests", () => {
     vi.mocked(prisma.staffShiftRequest.findMany).mockResolvedValue([
       {
         workDate: new Date("2026-10-01T00:00:00.000Z"),
-        isDayOffRequested: false,
+        requestType: "reduced",
         preferredStartTime: new Date("1970-01-01T10:00:00.000Z"),
         preferredEndTime: new Date("1970-01-01T15:00:00.000Z"),
       },
@@ -78,7 +78,7 @@ describe("getStaffShiftRequests", () => {
     expect(result).toEqual([
       {
         workDate: "2026-10-01",
-        isDayOffRequested: false,
+        requestType: "reduced",
         preferredStartMinutes: 600,
         preferredEndMinutes: 900,
       },
@@ -137,7 +137,7 @@ describe("getStaffShiftRequests", () => {
     vi.mocked(prisma.staffShiftRequest.findMany).mockResolvedValue([
       {
         workDate: new Date("2026-10-01T00:00:00.000Z"),
-        isDayOffRequested: false,
+        requestType: "reduced",
         preferredStartTime: new Date("1970-01-01T10:00:00.000Z"),
         preferredEndTime: new Date("1970-01-01T15:00:00.000Z"),
       },
@@ -148,7 +148,7 @@ describe("getStaffShiftRequests", () => {
     expect(result).toEqual([
       {
         workDate: "2026-10-01",
-        isDayOffRequested: false,
+        requestType: "reduced",
         preferredStartMinutes: 600,
         preferredEndMinutes: 900,
       },
@@ -180,7 +180,7 @@ describe("saveStaffShiftRequest", () => {
     const result = await saveStaffShiftRequest({
       staffId: 42,
       workDate: "2026-10-01",
-      isDayOffRequested: false,
+      requestType: "reduced",
       preferredStartMinutes: 600,
       preferredEndMinutes: 900,
     });
@@ -196,7 +196,7 @@ describe("saveStaffShiftRequest", () => {
     const result = await saveStaffShiftRequest({
       staffId: 42,
       workDate: "2026-10-01",
-      isDayOffRequested: false,
+      requestType: "reduced",
       preferredStartMinutes: 600,
       preferredEndMinutes: 900,
     });
@@ -209,26 +209,26 @@ describe("saveStaffShiftRequest", () => {
       create: {
         staffId: 42,
         workDate: new Date("2026-10-01T00:00:00.000Z"),
-        isDayOffRequested: false,
+        requestType: "reduced",
         preferredStartTime: new Date("1970-01-01T10:00:00.000Z"),
         preferredEndTime: new Date("1970-01-01T15:00:00.000Z"),
       },
       update: {
-        isDayOffRequested: false,
+        requestType: "reduced",
         preferredStartTime: new Date("1970-01-01T10:00:00.000Z"),
         preferredEndTime: new Date("1970-01-01T15:00:00.000Z"),
       },
     });
   });
 
-  it("upserts null preferred times when a day-off is requested without preferred times", async () => {
+  it("upserts null preferred times when a day off is requested", async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: "7", role: "staff" } } as never);
     vi.mocked(prisma.admin.findUnique).mockResolvedValue({ id: 7, staffId: 42 } as never);
 
     const result = await saveStaffShiftRequest({
       staffId: 42,
       workDate: "2026-10-01",
-      isDayOffRequested: true,
+      requestType: "day_off",
       preferredStartMinutes: null,
       preferredEndMinutes: null,
     });
@@ -241,12 +241,44 @@ describe("saveStaffShiftRequest", () => {
       create: {
         staffId: 42,
         workDate: new Date("2026-10-01T00:00:00.000Z"),
-        isDayOffRequested: true,
+        requestType: "day_off",
         preferredStartTime: null,
         preferredEndTime: null,
       },
       update: {
-        isDayOffRequested: true,
+        requestType: "day_off",
+        preferredStartTime: null,
+        preferredEndTime: null,
+      },
+    });
+  });
+
+  it("upserts requestType 'full' when the staff selects full attendance", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "7", role: "staff" } } as never);
+    vi.mocked(prisma.admin.findUnique).mockResolvedValue({ id: 7, staffId: 42 } as never);
+
+    const result = await saveStaffShiftRequest({
+      staffId: 42,
+      workDate: "2026-10-01",
+      requestType: "full",
+      preferredStartMinutes: null,
+      preferredEndMinutes: null,
+    });
+
+    expect(result).toEqual({ status: "saved" });
+    expect(prisma.staffShiftRequest.upsert).toHaveBeenCalledWith({
+      where: {
+        staffId_workDate: { staffId: 42, workDate: new Date("2026-10-01T00:00:00.000Z") },
+      },
+      create: {
+        staffId: 42,
+        workDate: new Date("2026-10-01T00:00:00.000Z"),
+        requestType: "full",
+        preferredStartTime: null,
+        preferredEndTime: null,
+      },
+      update: {
+        requestType: "full",
         preferredStartTime: null,
         preferredEndTime: null,
       },
@@ -290,7 +322,7 @@ describe("listShiftRequestsForStore", () => {
       {
         staffId: 42,
         workDate: new Date("2026-10-01T00:00:00.000Z"),
-        isDayOffRequested: true,
+        requestType: "day_off",
         preferredStartTime: null,
         preferredEndTime: null,
       },
@@ -304,7 +336,7 @@ describe("listShiftRequestsForStore", () => {
         42: [
           {
             workDate: "2026-10-01",
-            isDayOffRequested: true,
+            requestType: "day_off",
             preferredStartMinutes: null,
             preferredEndMinutes: null,
           },

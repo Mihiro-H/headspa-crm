@@ -3,24 +3,29 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { dbTimeToMinutes, minutesToLabel, monthRange } from "@/lib/reservation/time";
+import type { ShiftRequestType } from "@/lib/scheduling/derive-shift-draft";
 import { getCurrentAdminStoreScope } from "./current-admin-scope";
+
+// UI（my-shift-requests/page.tsx）はこのファイル経由で型をimportするため再エクスポートする
+// （`lib/scheduling/derive-shift-draft.ts`を型の定義元として一本化し、重複定義しない）
+export type { ShiftRequestType };
 
 export interface StaffShiftRequestItem {
   workDate: string;
-  isDayOffRequested: boolean;
+  requestType: ShiftRequestType;
   preferredStartMinutes: number | null;
   preferredEndMinutes: number | null;
 }
 
 function toItem(r: {
   workDate: Date;
-  isDayOffRequested: boolean;
+  requestType: ShiftRequestType;
   preferredStartTime: Date | null;
   preferredEndTime: Date | null;
 }): StaffShiftRequestItem {
   return {
     workDate: r.workDate.toISOString().slice(0, 10),
-    isDayOffRequested: r.isDayOffRequested,
+    requestType: r.requestType,
     preferredStartMinutes: r.preferredStartTime ? dbTimeToMinutes(r.preferredStartTime) : null,
     preferredEndMinutes: r.preferredEndTime ? dbTimeToMinutes(r.preferredEndTime) : null,
   };
@@ -66,7 +71,7 @@ export async function getStaffShiftRequests(
 export interface SaveStaffShiftRequestParams {
   staffId: number;
   workDate: string;
-  isDayOffRequested: boolean;
+  requestType: ShiftRequestType;
   preferredStartMinutes: number | null;
   preferredEndMinutes: number | null;
 }
@@ -96,12 +101,12 @@ export async function saveStaffShiftRequest(
     create: {
       staffId: params.staffId,
       workDate,
-      isDayOffRequested: params.isDayOffRequested,
+      requestType: params.requestType,
       preferredStartTime,
       preferredEndTime,
     },
     update: {
-      isDayOffRequested: params.isDayOffRequested,
+      requestType: params.requestType,
       preferredStartTime,
       preferredEndTime,
     },
