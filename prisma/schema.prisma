@@ -68,6 +68,9 @@ model Staff {
   shifts        StaffShift[]
   reservations  Reservation[]
   customerNotes CustomerNote[]
+  admins        Admin[]
+  shiftRequests StaffShiftRequest[]
+  shiftDrafts   StaffShiftDraft[]
 
   @@map("staff")
 }
@@ -86,6 +89,36 @@ model StaffShift {
   @@map("staff_shifts")
 }
 
+model StaffShiftRequest {
+  id                 Int       @id @default(autoincrement()) @map("request_id")
+  staffId            Int       @map("staff_id")
+  workDate           DateTime  @map("work_date") @db.Date
+  isDayOffRequested  Boolean   @default(false) @map("is_day_off_requested")
+  preferredStartTime DateTime? @map("preferred_start_time") @db.Time()
+  preferredEndTime   DateTime? @map("preferred_end_time") @db.Time()
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  staff Staff @relation(fields: [staffId], references: [id])
+
+  @@unique([staffId, workDate])
+  @@map("staff_shift_requests")
+}
+
+model StaffShiftDraft {
+  id          Int       @id @default(autoincrement()) @map("draft_id")
+  staffId     Int       @map("staff_id")
+  workDate    DateTime  @map("work_date") @db.Date
+  startTime   DateTime? @map("start_time") @db.Time()
+  endTime     DateTime? @map("end_time") @db.Time()
+  isDayOff    Boolean   @default(false) @map("is_day_off")
+  generatedAt DateTime  @default(now()) @map("generated_at")
+
+  staff Staff @relation(fields: [staffId], references: [id])
+
+  @@unique([staffId, workDate])
+  @@map("staff_shift_drafts")
+}
+
 model Admin {
   id           Int       @id @default(autoincrement()) @map("admin_id")
   name         String    @db.VarChar(100)
@@ -95,10 +128,12 @@ model Admin {
   isActive     Boolean   @default(true) @map("is_active")
   inviteToken           String?   @unique @map("invite_token") @db.VarChar(255)
   inviteTokenExpiresAt  DateTime? @map("invite_token_expires_at")
+  staffId      Int?      @map("staff_id")
   createdAt    DateTime  @default(now()) @map("created_at")
 
   stores            AdminStore[]
   segmentCampaigns SegmentCampaign[]
+  staff             Staff?            @relation(fields: [staffId], references: [id])
 
   @@map("admins")
 }
