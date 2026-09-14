@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { getStoreOpenHours } from "@/lib/reservation/store-hours";
-import { minutesToLabel, monthRange } from "@/lib/reservation/time";
+import { monthRange, timeOrNull } from "@/lib/reservation/time";
 import { parseReducedFreeText, type TimeSpec } from "./parse-reduced-free-text";
 
 export interface ShiftFormSubmission {
@@ -21,10 +21,6 @@ function resolveTimeSpec(
   if (spec.type === "minutes") return spec.value;
   if (spec.type === "store_open") return storeHours.openMinutes;
   return storeHours.closeMinutes;
-}
-
-function timeOrNull(minutes: number | null): Date | null {
-  return minutes !== null ? new Date(`1970-01-01T${minutesToLabel(minutes)}:00.000Z`) : null;
 }
 
 interface PendingEntry {
