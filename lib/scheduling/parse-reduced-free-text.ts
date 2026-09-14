@@ -20,7 +20,9 @@ function toHalfWidth(input: string): string {
   return input
     .replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
     .replace(/／/g, "/")
-    .replace(/：/g, ":");
+    .replace(/：/g, ":")
+    .replace(/～/g, "~")
+    .replace(/－/g, "-");
 }
 
 const LINE_PATTERN = /^([0-9]{1,2})\s*\/\s*([0-9]{1,2})\s+(.+?)\s*[-〜~]\s*(.+)$/;
@@ -73,6 +75,19 @@ export function parseReducedFreeText(
     const end = parseTimeSpec(match[4]);
 
     if (!start || !end || month < 1 || month > 12 || day < 1 || day > 31) {
+      unparsedLines.push(trimmedRaw);
+      continue;
+    }
+
+    // 2/30や4/31のような暦として存在しない日付は、Date構築時にサイレントに
+    // 別の日へロールオーバーしてしまう（例: new Date("2026-02-30")は2026-03-02
+    // になる）ため、構築後の年月日が入力と一致するかを確認して弾く。
+    const candidate = new Date(Date.UTC(year, month - 1, day));
+    if (
+      candidate.getUTCFullYear() !== year ||
+      candidate.getUTCMonth() !== month - 1 ||
+      candidate.getUTCDate() !== day
+    ) {
       unparsedLines.push(trimmedRaw);
       continue;
     }

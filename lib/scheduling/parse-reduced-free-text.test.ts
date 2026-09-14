@@ -91,4 +91,26 @@ describe("parseReducedFreeText", () => {
     expect(result.lines).toHaveLength(2);
     expect(result.unparsedLines).toEqual(["よろしくお願いします"]);
   });
+
+  it("collects a calendar-invalid date (e.g. February 30th) as unparsedLines instead of silently rolling over", () => {
+    const result = parseReducedFreeText("2/30 11:00-15:00", "2026-10");
+    expect(result).toEqual({ lines: [], unparsedLines: ["2/30 11:00-15:00"] });
+  });
+
+  it("accepts the full-width tilde and full-width hyphen as separators", () => {
+    const result = parseReducedFreeText("10/5 11:00～15:00\n10/6 11:00－15:00", "2026-10");
+    expect(result.lines).toEqual([
+      {
+        workDate: "2026-10-05",
+        start: { type: "minutes", value: 660 },
+        end: { type: "minutes", value: 900 },
+      },
+      {
+        workDate: "2026-10-06",
+        start: { type: "minutes", value: 660 },
+        end: { type: "minutes", value: 900 },
+      },
+    ]);
+    expect(result.unparsedLines).toEqual([]);
+  });
 });
