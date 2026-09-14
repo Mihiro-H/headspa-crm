@@ -182,11 +182,16 @@ export default function StaffShiftsPage() {
   async function handleCopyFormRoster() {
     if (storeId === null) return;
     const result = await getStaffFormRoster(storeId);
-    if (result.status === "ok") {
+    if (result.status !== "ok") {
+      setMessage("コピーに失敗しました。");
+      return;
+    }
+    try {
       await navigator.clipboard.writeText(result.labels.join("\n"));
       setMessage(`${result.labels.length}件をクリップボードにコピーしました。`);
-    } else {
-      setMessage("コピーに失敗しました。");
+    } catch {
+      // ブラウザの権限拒否(NotAllowedError)や非セキュアコンテキスト等でrejectされうる
+      setMessage("クリップボードへのコピーに失敗しました。ブラウザの権限設定をご確認ください。");
     }
   }
 
