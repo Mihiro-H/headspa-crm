@@ -12,6 +12,10 @@ import {
   confirmShiftDraftForStore,
   type ShiftDraftItem,
 } from "@/app/actions/shift-drafts";
+import {
+  exportConfirmedShifts,
+  type ConfirmedShiftRow,
+} from "@/app/actions/export-confirmed-shifts";
 import { minutesToLabel } from "@/lib/reservation/time";
 
 function yearMonthWithOffset(monthOffset: number): string {
@@ -35,6 +39,29 @@ function minutesFromTimeInput(value: string): number | null {
 
 function timeInputFromMinutes(minutes: number | null): string {
   return minutes === null ? "" : minutesToLabel(minutes);
+}
+
+// 既存の売上・月報レポート（reports/page.tsx）と同じ方式：ブラウザ内でCSVを組み立てて
+// ダウンロードする。先頭のBOM（﻿）はExcelで日本語CSVを開いたときの文字化けを防ぐため。
+function downloadShiftCsv(rows: ConfirmedShiftRow[], storeName: string, yearMonth: string) {
+  const header = ["日付", "スタッフ名", "休み", "開始", "終了"];
+  const csvRows = rows.map((r) => [
+    r.workDate,
+    r.staffName,
+    r.isDayOff ? "休み" : "",
+    r.isDayOff ? "" : timeInputFromMinutes(r.startMinutes),
+    r.isDayOff ? "" : timeInputFromMinutes(r.endMinutes),
+  ]);
+  const csvBody = [header, ...csvRows]
+    .map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(","))
+    .join("\r\n");
+  const blob = new Blob([`﻿${csvBody}`], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `staff-shifts_${storeName}_${yearMonth}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function requestSummary(item: StaffShiftRequestItem | undefined): string {
@@ -140,6 +167,17 @@ export default function StaffShiftsPage() {
     }
   }
 
+  async function handleExport() {
+    if (storeId === null) return;
+    const result = await exportConfirmedShifts(storeId, yearMonth);
+    if (result.status === "ok") {
+      const storeName = stores.find((s) => s.id === storeId)?.name ?? "店舗";
+      downloadShiftCsv(result.rows, storeName, yearMonth);
+    } else {
+      setMessage("ダウンロードに失敗しました。");
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-xl text-primary-700">スタッフシフト管理</h1>
@@ -183,6 +221,13 @@ export default function StaffShiftsPage() {
           className="h-10 rounded-lg bg-accent-500 px-4 text-sm font-medium text-white"
         >
           確定する
+        </button>
+        <button
+          type="button"
+          onClick={handleExport}
+          className="h-10 rounded-lg border border-neutral-300 px-4 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+        >
+          確定済みシフトをダウンロード（CSV）
         </button>
       </div>
 
