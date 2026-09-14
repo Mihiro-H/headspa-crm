@@ -156,6 +156,10 @@ export default function MyShiftRequestsPage() {
         })}
       </select>
 
+      <p className="text-xs text-neutral-500">
+        ※Googleフォームからも希望を提出できる場合、後から提出された方の内容がこの月の希望として優先されます（この画面とフォームの両方で入力すると、後者が上書きします）。
+      </p>
+
       <p className="text-sm text-neutral-600">
         {days.length}日中{completeCount}件完了・{days.length - completeCount}件不備
       </p>
