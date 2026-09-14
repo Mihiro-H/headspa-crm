@@ -22,17 +22,19 @@ SHIFT_FORM_WEBHOOK_SECRET=<ランダムな文字列>
 
 ---
 
+
+
 ## 2. Apps Scriptプロジェクトの作成
 
 1. [script.google.com](https://script.google.com) を開き、「新しいプロジェクト」を作成する。
 2. デフォルトで生成されている`myFunction`などのコードを全て削除して、以下のコードをそのまま貼り付ける。
 3. コード冒頭の`WEBHOOK_URL`と`WEBHOOK_SECRET`の2箇所を書き換える。**それ以外は変更不要**（フォームの質問文言もこのコードが自動で設定するため、手作業で用意する必要はない）。
-   - `WEBHOOK_URL`: アプリを実際にホストしているドメインの`/api/shift-form-webhook`（例: `https://your-app.example.com/api/shift-form-webhook`）
-   - `WEBHOOK_SECRET`: 手順1で`.env`に設定した`SHIFT_FORM_WEBHOOK_SECRET`と同じ文字列
+  - `WEBHOOK_URL`: アプリを実際にホストしているドメインの`/api/shift-form-webhook`（例: `https://your-app.example.com/api/shift-form-webhook`）
+  - `WEBHOOK_SECRET`: 手順1で`.env`に設定した`SHIFT_FORM_WEBHOOK_SECRET`と同じ文字列
 
 ```js
 // ===== 書き換えが必要な設定 =====
-const WEBHOOK_URL = "https://<あなたのドメイン>/api/shift-form-webhook";
+const WEBHOOK_URL = "https://localhost:3000/api/shift-form-webhook";
 const WEBHOOK_SECRET = "<.envのSHIFT_FORM_WEBHOOK_SECRETと同じ値>";
 const FORM_TITLE = "シフト希望提出フォーム";
 // ================================
@@ -48,6 +50,9 @@ const QUESTION_TITLES = {
 // 「お名前」プルダウンの初期プレースホルダー（あとで手順4の一覧に置き換える）
 const STAFF_PLACEHOLDER_CHOICE =
   "（管理者へ：「フォーム用スタッフ一覧をコピー」ボタンの内容に置き換えてください）";
+
+// 「休み希望の日」チェックボックスの選択肢に曜日を添えるための曜日ラベル（日曜=0始まり）
+const WEEKDAY_LABELS_JA = ["日", "月", "火", "水", "木", "金", "土"];
 
 /**
  * 初回セットアップ用。このプロジェクトにつき最初に1回だけ実行する。
@@ -111,7 +116,9 @@ function refreshFormChoices() {
   const dayOffItem = findItemByTitle(form, QUESTION_TITLES.dayOff).asCheckboxItem();
   const dayChoices = [];
   for (let day = 1; day <= numDays; day++) {
-    dayChoices.push(target.month + "/" + day);
+    // 曜日を添えて選びやすくする（月は1-12のまま、Dateの月引数は0始まりなので-1する）
+    const weekday = WEEKDAY_LABELS_JA[new Date(target.year, target.month - 1, day).getDay()];
+    dayChoices.push(target.month + "/" + day + "(" + weekday + ")");
   }
   dayOffItem.setChoiceValues(dayChoices);
 
@@ -164,13 +171,14 @@ function onFormSubmit(e) {
     ? dayOffRaw
     : (dayOffRaw || "").split(",").map((s) => s.trim()).filter((s) => s !== "");
 
-  // フォームの選択肢は「10/1」のようなM/D形式（対象年月の年を含まない）なので、
+  // フォームの選択肢は「10/1(木)」のようなM/D+曜日形式（対象年月の年を含まない）なので、
+  // 先頭のM/D部分だけを取り出し（曜日表示はここで捨てる）、
   // 「対象年月」の回答から取り出した年と組み合わせてYYYY-MM-DD形式に変換する。
   // ここで年を補完しないと、アプリ側は年なしの日付を解釈できずエラーになる。
   const dayOffDates = dayOffMonthDayList.map((monthDay) => {
-    const parts = monthDay.split("/");
-    const month = parts[0].padStart(2, "0");
-    const day = parts[1].padStart(2, "0");
+    const match = monthDay.match(/^(\d+)\/(\d+)/);
+    const month = match[1].padStart(2, "0");
+    const day = match[2].padStart(2, "0");
     return `${year}-${month}-${day}`;
   });
 
@@ -191,23 +199,27 @@ function onFormSubmit(e) {
 }
 ```
 
-4. Apps Scriptエディタ上部のフロッピーディスクアイコン（保存）をクリックして保存する。
+1. Apps Scriptエディタ上部のフロッピーディスクアイコン（保存）をクリックして保存する。
 
 ---
+
+
 
 ## 3. `setupShiftRequestForm`の実行（フォームの新規作成）
 
 1. Apps Scriptエディタ上部の関数選択ドロップダウンで`setupShiftRequestForm`を選択する。
 2. 「実行」（▶）ボタンをクリックする。
 3. 初回実行時はGoogleアカウントの承認画面が表示される。フォームの所有者アカウントで承認する。
-   - 「このアプリは Google で確認されていません」という警告が出た場合は、「詳細」→「（プロジェクト名）に移動（安全ではないページ）」を選んで進める。これは自分が作成したスクリプトであるため問題ない。
+  - 「このアプリは Google で確認されていません」という警告が出た場合は、「詳細」→「（プロジェクト名）に移動（安全ではないページ）」を選んで進める。これは自分が作成したスクリプトであるため問題ない。
 4. 実行が完了したら、Apps Scriptエディタ左側メニューの「実行数」（またはログ表示）を開き、`Logger.log`で出力された以下の2つのURLを控える。
-   - **回答用URL**: スタッフに共有してフォームに回答してもらうためのURL
-   - **編集用URL**: フォームの質問内容を確認したり、次の手順4で使うURL
+  - **回答用URL**: スタッフに共有してフォームに回答してもらうためのURL
+  - **編集用URL**: フォームの質問内容を確認したり、次の手順4で使うURL
 
 この時点で、フォーム本体・4つの質問・「フォーム送信時」トリガー・「毎月21日」の自動更新トリガーがすべて作成済みになっている。「対象年月」「休み希望の日」の選択肢も、実行時点から見た次月分（実行を2026年9月中に行えば2026年10月分）がすでに反映されている。
 
 ---
+
+
 
 ## 4. お名前プルダウンの設定
 
@@ -223,6 +235,8 @@ function onFormSubmit(e) {
 
 ---
 
+
+
 ## 5. 「対象年月」「休み希望の日」の自動更新について
 
 これらの選択肢は、Apps Scriptの時間主導型トリガー（`refreshFormChoices`、毎月21日に自動実行）によって、常に「次月」分に自動で更新される。手動でのメンテナンスは不要。
@@ -235,12 +249,14 @@ function onFormSubmit(e) {
 
 ---
 
+
+
 ## 6. 動作確認手順
 
 1. 手順3で控えた回答用URLを開き、テストとして自分自身の名前・適当な休み希望日・時短希望を入力して送信する。
 2. アプリを`npm run dev`で起動している場合は、そのターミナルの出力を確認し、Webhook呼び出し（`/api/shift-form-webhook`へのPOST）でエラーが出ていないか確認する。
-   - `unmatched_staff`エラーが出た場合は、「お名前」の選択肢とアプリ側のスタッフ名（`店舗名 - 氏名`）が完全一致しているか確認する。
-   - 認証エラーが出た場合は、`.env`の`SHIFT_FORM_WEBHOOK_SECRET`とApps Scriptの`WEBHOOK_SECRET`が一致しているか確認する。
+  - `unmatched_staff`エラーが出た場合は、「お名前」の選択肢とアプリ側のスタッフ名（`店舗名 - 氏名`）が完全一致しているか確認する。
+  - 認証エラーが出た場合は、`.env`の`SHIFT_FORM_WEBHOOK_SECRET`とApps Scriptの`WEBHOOK_SECRET`が一致しているか確認する。
 3. アプリの`/admin/staff-shifts`画面を開き、テスト送信した対象月・対象スタッフの「提出済みの希望」欄に、フォームで入力した休み希望日・時短希望が反映されているか確認する。
 4. 時短希望の自由記述欄にわざと不正な書式の行を含めて再テストし、その行が「不明な行」としてWebhookのレスポンス（Apps Scriptの実行ログ、Apps Scriptエディタの「実行数」メニューから確認可能）に記録され、かつ他の正常な行は反映されることを確認する（任意だが推奨）。
 5. 自動更新トリガーを即時に確認したい場合は、Apps Scriptエディタの関数選択ドロップダウンで`refreshFormChoices`を選び、手動で実行してログを確認してもよい（本来は毎月21日に自動実行される）。

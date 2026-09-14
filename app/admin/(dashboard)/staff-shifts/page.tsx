@@ -18,6 +18,7 @@ import {
 } from "@/app/actions/export-confirmed-shifts";
 import { getStaffFormRoster } from "@/app/actions/staff-form-roster";
 import { minutesToLabel } from "@/lib/reservation/time";
+import { weekdayLabel } from "@/lib/reservation/date-format";
 
 function yearMonthWithOffset(monthOffset: number): string {
   const d = new Date();
@@ -274,7 +275,9 @@ export default function StaffShiftsPage() {
             <tbody>
               {days.map((workDate) => (
                 <tr key={workDate} className="border-b border-neutral-100 last:border-0">
-                  <td className="p-2 text-xs text-neutral-500">{workDate}</td>
+                  <td className="p-2 text-xs text-neutral-500">
+                    {workDate}（{weekdayLabel(workDate)}）
+                  </td>
                   {staffList.map((s) => (
                     <td key={s.id} className="p-2 text-xs text-neutral-700">
                       {requestSummary(requestsByStaffId[s.id]?.find((r) => r.workDate === workDate))}
@@ -304,7 +307,9 @@ export default function StaffShiftsPage() {
             <tbody>
               {days.map((workDate) => (
                 <tr key={workDate} className="border-b border-neutral-100 last:border-0">
-                  <td className="p-2 text-xs text-neutral-500">{workDate}</td>
+                  <td className="p-2 text-xs text-neutral-500">
+                    {workDate}（{weekdayLabel(workDate)}）
+                  </td>
                   {staffList.map((s) => {
                     const draft = draftFor(s.id, workDate);
                     const isDayOff = draft?.isDayOff ?? true;

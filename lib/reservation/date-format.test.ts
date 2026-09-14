@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatJapaneseDate } from "./date-format";
+import { formatJapaneseDate, weekdayLabel } from "./date-format";
 
 describe("formatJapaneseDate", () => {
   it("formats a date string with the Japanese weekday", () => {
@@ -12,5 +12,19 @@ describe("formatJapaneseDate", () => {
 
   it("does not zero-pad the month or day", () => {
     expect(formatJapaneseDate("2026-01-05")).toBe("2026年1月5日（月）");
+  });
+});
+
+describe("weekdayLabel", () => {
+  it("returns just the Japanese weekday character for a date string", () => {
+    expect(weekdayLabel("2026-09-13")).toBe("日");
+  });
+
+  it("returns a different weekday correctly", () => {
+    expect(weekdayLabel("2026-09-12")).toBe("土");
+  });
+
+  it("is consistent with formatJapaneseDate for the same date", () => {
+    expect(weekdayLabel("2026-01-05")).toBe("月");
   });
 });

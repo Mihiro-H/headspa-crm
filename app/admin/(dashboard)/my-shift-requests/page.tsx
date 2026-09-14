@@ -9,6 +9,7 @@ import {
   type StaffShiftRequestItem,
 } from "@/app/actions/staff-shift-requests";
 import { minutesToLabel } from "@/lib/reservation/time";
+import { weekdayLabel } from "@/lib/reservation/date-format";
 import { resolveSaveOutcome } from "@/lib/scheduling/resolve-save-outcome";
 import { isShiftRequestComplete } from "@/lib/scheduling/shift-request-completion";
 
@@ -183,7 +184,9 @@ export default function MyShiftRequestsPage() {
               const isReduced = requestType === "reduced";
               return (
                 <tr key={workDate} className="border-b border-neutral-100 last:border-0">
-                  <td className="p-2 text-neutral-800">{workDate}</td>
+                  <td className="p-2 text-neutral-800">
+                    {workDate}（{weekdayLabel(workDate)}）
+                  </td>
                   <td className="p-2">
                     <div className="flex items-center gap-3">
                       {REQUEST_TYPES.map((type) => (
