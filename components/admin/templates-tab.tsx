@@ -19,6 +19,14 @@ const TYPE_LABEL: Record<DeliveryTemplateType, string> = {
   confirmation: "予約完了通知",
 };
 
+// 種別ごとに実際に差し込める変数が異なる（送信元のコード側でtagsとして渡す内容が違うため）
+const TAG_HINT: Record<DeliveryTemplateType, string> = {
+  birthday: "{{氏名}}",
+  reminder: "{{氏名}} {{店舗名}} {{予約時刻}}",
+  segment: "{{氏名}}",
+  confirmation: "{{氏名}} {{店舗名}} {{予約日}} {{予約時刻}} {{マイページURL}}",
+};
+
 const PAGE_SIZE = 20;
 
 const EMPTY_FORM = { type: "segment" as DeliveryTemplateType, name: "", subject: "", bodyText: "" };
@@ -171,8 +179,11 @@ export function TemplatesTab() {
             onChange={(e) => setForm({ ...form, subject: e.target.value })}
             className="h-10 rounded-md border border-neutral-300 px-2"
           />
+          <p className="text-xs text-neutral-500">
+            差し込みタグ：{TAG_HINT[form.type]} が利用できます
+          </p>
           <textarea
-            placeholder="本文（差し込みタグ：{{氏名}} が利用できます）"
+            placeholder="本文"
             value={form.bodyText}
             onChange={(e) => setForm({ ...form, bodyText: e.target.value })}
             rows={5}
