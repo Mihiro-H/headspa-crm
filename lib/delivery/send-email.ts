@@ -14,7 +14,7 @@ const RESEND_SEND_URL = "https://api.resend.com/emails";
 // 代わりに送信先が制限される場合がある（本番の宛先が届かない場合は、Resend側で
 // 独自ドメインを認証し、このSENDER_EMAILを差し替える）。
 const SENDER_EMAIL = "onboarding@resend.dev";
-const SENDER_NAME = "フォレスパ";
+const SENDER_NAME = "フォレスパ｜ヘッドスパ専門店";
 
 export async function sendEmail(params: SendEmailParams): Promise<SendEmailResult> {
   const apiKey = process.env.RESEND_API_KEY;

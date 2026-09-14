@@ -42,7 +42,7 @@ describe("sendEmail", () => {
     );
     const callArgs = vi.mocked(fetch).mock.calls[0][1];
     const sentBody = JSON.parse(callArgs?.body as string);
-    expect(sentBody.from).toBe("フォレスパ <onboarding@resend.dev>");
+    expect(sentBody.from).toBe("フォレスパ｜ヘッドスパ専門店 <onboarding@resend.dev>");
     expect(sentBody.to).toEqual(["a@example.com"]);
     expect(sentBody.text).toBe("本文");
     // テンプレート本文は差し込みタグに会員の自由入力（氏名等）が入るため、
