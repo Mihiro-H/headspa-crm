@@ -15,6 +15,7 @@ import {
 import { listTemplates, type TemplateListItem } from "@/app/actions/manage-templates";
 import { listCustomerStatuses, type CustomerStatusItem } from "@/app/actions/customer-statuses";
 import { listStores, type StoreListItem } from "@/app/actions/stores";
+import { formatDateTimeJst } from "@/lib/delivery/format-datetime";
 import { Modal } from "@/components/ui/modal";
 import { Pagination } from "@/components/ui/pagination";
 
@@ -165,8 +166,8 @@ export function SegmentSettingsTab({ onNavigateToTemplates }: SegmentSettingsTab
                   <td className="p-3">{CHANNEL_LABEL[h.channelMode]}</td>
                   <td className="p-3">{h.templateName}</td>
                   <td className="p-3">{h.targetCount}名</td>
-                  <td className="p-3">{h.scheduledAt ?? "—"}</td>
-                  <td className="p-3">{h.sentAt ?? "未送信"}</td>
+                  <td className="p-3">{h.scheduledAt ? formatDateTimeJst(h.scheduledAt) : "—"}</td>
+                  <td className="p-3">{h.sentAt ? formatDateTimeJst(h.sentAt) : "未送信"}</td>
                 </tr>
               ))}
             </tbody>
