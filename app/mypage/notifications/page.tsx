@@ -10,6 +10,7 @@ const TEMPLATE_TYPE_LABEL: Record<MemberNotificationItem["templateType"], string
   birthday: "誕生日メッセージ",
   reminder: "来店リマインド",
   segment: "キャンペーンのお知らせ",
+  confirmation: "予約完了のお知らせ",
 };
 
 function formatSentAt(sentAt: string): string {

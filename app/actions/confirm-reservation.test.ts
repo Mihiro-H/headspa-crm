@@ -3,6 +3,7 @@ import { confirmReservation } from "./confirm-reservation";
 import { prisma } from "@/lib/db";
 import { auth } from "@/auth";
 import { createNotification } from "@/lib/notifications/create-notification";
+import { sendReservationConfirmation } from "@/lib/delivery/send-reservation-confirmation";
 
 vi.mock("@/lib/db", () => ({
   prisma: {
@@ -22,6 +23,19 @@ vi.mock("@/lib/notifications/create-notification", () => ({
   createNotification: vi.fn(),
 }));
 
+vi.mock("@/lib/delivery/send-reservation-confirmation", () => ({
+  sendReservationConfirmation: vi.fn(),
+}));
+
+const member = {
+  id: 5,
+  name: "山田太郎",
+  email: "yamada@example.com",
+  lineUserId: null,
+  emailNotificationEnabled: true,
+  lineNotificationEnabled: true,
+};
+
 describe("confirmReservation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -30,8 +44,11 @@ describe("confirmReservation", () => {
       storeId: 2,
       reservationDate: new Date("2026-09-20T00:00:00.000Z"),
       startTime: new Date("1970-01-01T11:00:00.000Z"),
+      member,
+      store: { id: 2, name: "フォレスパ 渋谷店" },
     } as never);
     vi.mocked(prisma.memberStore.upsert).mockResolvedValue({} as never);
+    vi.mocked(sendReservationConfirmation).mockResolvedValue("success");
   });
 
   it("confirms using the authenticated member's id from the session, not a client-supplied one", async () => {
@@ -48,6 +65,26 @@ describe("confirmReservation", () => {
     expect(prisma.reservation.update).toHaveBeenCalledWith({
       where: { id: 99 },
       data: { memberId: 5, status: "confirmed", tempHoldExpiresAt: null },
+      include: { member: true, store: true },
+    });
+  });
+
+  it("sends a reservation confirmation notification to the member", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "5", role: "member" } } as never);
+    vi.mocked(prisma.reservation.findUnique).mockResolvedValue({
+      id: 99,
+      status: "temp_hold",
+      tempHoldExpiresAt: new Date(Date.now() + 60_000),
+    } as never);
+
+    await confirmReservation({ reservationId: 99 });
+
+    expect(sendReservationConfirmation).toHaveBeenCalledWith({
+      member,
+      storeName: "フォレスパ 渋谷店",
+      reservationDateLabel: "2026年9月20日（日）",
+      startTimeLabel: "11:00",
+      now: expect.any(Date),
     });
   });
 

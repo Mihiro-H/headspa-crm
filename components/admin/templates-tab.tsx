@@ -16,6 +16,7 @@ const TYPE_LABEL: Record<DeliveryTemplateType, string> = {
   birthday: "誕生月メール",
   reminder: "前日リマインド",
   segment: "セグメント配信",
+  confirmation: "予約完了通知",
 };
 
 const PAGE_SIZE = 20;
@@ -154,6 +155,7 @@ export function TemplatesTab() {
             <option value="segment">セグメント配信</option>
             <option value="birthday">誕生月メール</option>
             <option value="reminder">前日リマインド</option>
+            <option value="confirmation">予約完了通知</option>
           </select>
           <input
             type="text"

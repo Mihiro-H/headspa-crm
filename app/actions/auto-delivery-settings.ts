@@ -3,7 +3,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 
-export type AutoDeliveryType = "birthday" | "reminder";
+export type AutoDeliveryType = "birthday" | "reminder" | "confirmation";
 export type ChannelMode = "email" | "line" | "auto";
 
 const ADMIN_ROLES = new Set(["hq", "manager", "staff"]);

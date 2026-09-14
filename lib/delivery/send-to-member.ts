@@ -22,7 +22,7 @@ export interface SendToMemberParams {
   member: SendToMemberMember;
   channelMode: SegmentChannelMode;
   template: SendToMemberTemplate;
-  templateType: "birthday" | "reminder" | "segment";
+  templateType: "birthday" | "reminder" | "segment" | "confirmation";
   tags: Record<string, string>;
   now: Date;
 }

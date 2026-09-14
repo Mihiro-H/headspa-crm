@@ -3,7 +3,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 
-export type DeliveryTemplateType = "birthday" | "reminder" | "segment";
+export type DeliveryTemplateType = "birthday" | "reminder" | "segment" | "confirmation";
 
 // Server Actionはページのミドルウェアガードに関わらず直接呼び出せるため、
 // 管理者向けアクションは必ずそれぞれの関数内でセッションを検証する。

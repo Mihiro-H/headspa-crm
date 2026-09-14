@@ -13,7 +13,12 @@ import { listTemplates, type TemplateListItem } from "@/app/actions/manage-templ
 const TYPE_LABEL: Record<AutoDeliveryType, string> = {
   birthday: "誕生月メール",
   reminder: "前日リマインド",
+  confirmation: "予約完了通知",
 };
+
+// 予約完了通知はCronの定期実行ではなく、会員がWEB予約を確定した瞬間に送られるため、
+// 「いつ送るか」の設定（sendTiming）は意味を持たない。固定値として保存する。
+const CONFIRMATION_SEND_TIMING = "immediate";
 
 interface SectionState {
   channelMode: ChannelMode;
@@ -45,6 +50,9 @@ export function AutoDeliveryTab({ onNavigateToTemplates }: AutoDeliveryTabProps)
   const [reminder, setReminder] = useState<SectionState>(
     toSectionState(undefined, "18:00_day_before"),
   );
+  const [confirmation, setConfirmation] = useState<SectionState>(
+    toSectionState(undefined, CONFIRMATION_SEND_TIMING),
+  );
   const [saving, setSaving] = useState<AutoDeliveryType | null>(null);
 
   function refresh() {
@@ -52,13 +60,20 @@ export function AutoDeliveryTab({ onNavigateToTemplates }: AutoDeliveryTabProps)
       setSettings(all);
       setBirthday(toSectionState(all.find((s) => s.type === "birthday"), "month_start"));
       setReminder(toSectionState(all.find((s) => s.type === "reminder"), "18:00_day_before"));
+      setConfirmation(
+        toSectionState(all.find((s) => s.type === "confirmation"), CONFIRMATION_SEND_TIMING),
+      );
     });
   }
 
   useEffect(() => {
     refresh();
     listTemplates().then((all) =>
-      setTemplates(all.filter((t) => t.type === "birthday" || t.type === "reminder")),
+      setTemplates(
+        all.filter(
+          (t) => t.type === "birthday" || t.type === "reminder" || t.type === "confirmation",
+        ),
+      ),
     );
   }, []);
 
@@ -81,11 +96,14 @@ export function AutoDeliveryTab({ onNavigateToTemplates }: AutoDeliveryTabProps)
     state: SectionState,
     setState: (s: SectionState) => void,
     timingPlaceholder: string,
+    options?: { showTiming?: boolean; note?: string },
   ) {
     const relevantTemplates = templates.filter((t) => t.type === type);
+    const showTiming = options?.showTiming ?? true;
     return (
       <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-neutral-0 p-4">
         <h2 className="text-sm font-medium text-neutral-600">{TYPE_LABEL[type]}</h2>
+        {options?.note && <p className="text-xs text-neutral-500">{options.note}</p>}
         <label className="flex items-center gap-2 text-sm text-neutral-700">
           <input
             type="checkbox"
@@ -103,13 +121,15 @@ export function AutoDeliveryTab({ onNavigateToTemplates }: AutoDeliveryTabProps)
           <option value="email">メール</option>
           <option value="line">LINE</option>
         </select>
-        <input
-          type="text"
-          placeholder={timingPlaceholder}
-          value={state.sendTiming}
-          onChange={(e) => setState({ ...state, sendTiming: e.target.value })}
-          className="h-10 rounded-md border border-neutral-300 px-2"
-        />
+        {showTiming && (
+          <input
+            type="text"
+            placeholder={timingPlaceholder}
+            value={state.sendTiming}
+            onChange={(e) => setState({ ...state, sendTiming: e.target.value })}
+            className="h-10 rounded-md border border-neutral-300 px-2"
+          />
+        )}
         <select
           value={state.templateId ?? ""}
           onChange={(e) =>
@@ -150,6 +170,10 @@ export function AutoDeliveryTab({ onNavigateToTemplates }: AutoDeliveryTabProps)
       </p>
       {renderSection("birthday", birthday, setBirthday, "例：month_start")}
       {renderSection("reminder", reminder, setReminder, "例：18:00_day_before")}
+      {renderSection("confirmation", confirmation, setConfirmation, "", {
+        showTiming: false,
+        note: "WEB予約が確定した瞬間に会員へ送信されます（電話予約では送信されません）。Cronの実行タイミングは関係ありません。",
+      })}
       {settings.length === 0 && (
         <p className="text-sm text-neutral-500">
           まだ設定がありません。テンプレートを選択して保存してください。

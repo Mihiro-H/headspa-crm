@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 
 export interface MemberNotificationItem {
   id: number;
-  templateType: "birthday" | "reminder" | "segment";
+  templateType: "birthday" | "reminder" | "segment" | "confirmation";
   channel: "email" | "line";
   subject: string | null;
   sentAt: string;
