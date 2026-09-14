@@ -30,7 +30,14 @@ describe("sendToMemberAndLog", () => {
     vi.mocked(prisma.emailLineLog.create).mockResolvedValue({} as never);
 
     const status = await sendToMemberAndLog({
-      member: { id: 1, name: "山田太郎", email: "yamada@example.com", lineUserId: "line-1" },
+      member: {
+        id: 1,
+        name: "山田太郎",
+        email: "yamada@example.com",
+        lineUserId: "line-1",
+        emailNotificationEnabled: true,
+        lineNotificationEnabled: true,
+      },
       channelMode: "auto",
       template: { bodyText: "{{氏名}}様、前日リマインドです。", subject: "{{氏名}}様へ" },
       templateType: "reminder",
@@ -61,7 +68,14 @@ describe("sendToMemberAndLog", () => {
     vi.mocked(prisma.emailLineLog.create).mockResolvedValue({} as never);
 
     const status = await sendToMemberAndLog({
-      member: { id: 2, name: "鈴木花子", email: "suzuki@example.com", lineUserId: null },
+      member: {
+        id: 2,
+        name: "鈴木花子",
+        email: "suzuki@example.com",
+        lineUserId: null,
+        emailNotificationEnabled: true,
+        lineNotificationEnabled: true,
+      },
       channelMode: "auto",
       template: { bodyText: "{{氏名}}様、前日リマインドです。", subject: "{{氏名}}様へ" },
       templateType: "reminder",
@@ -85,5 +99,50 @@ describe("sendToMemberAndLog", () => {
         status: "failed",
       },
     });
+  });
+
+  it("skips without sending or logging when the member has opted out of every eligible channel", async () => {
+    const status = await sendToMemberAndLog({
+      member: {
+        id: 3,
+        name: "佐藤次郎",
+        email: "sato@example.com",
+        lineUserId: null,
+        emailNotificationEnabled: false,
+        lineNotificationEnabled: true,
+      },
+      channelMode: "auto",
+      template: { bodyText: "{{氏名}}様、前日リマインドです。", subject: "{{氏名}}様へ" },
+      templateType: "reminder",
+      tags: { 氏名: "佐藤次郎" },
+      now,
+    });
+
+    expect(status).toBe("skipped");
+    expect(sendEmail).not.toHaveBeenCalled();
+    expect(sendLineMessage).not.toHaveBeenCalled();
+    expect(prisma.emailLineLog.create).not.toHaveBeenCalled();
+  });
+
+  it("skips a LINE-linked member who disabled LINE notifications in line-only mode", async () => {
+    const status = await sendToMemberAndLog({
+      member: {
+        id: 4,
+        name: "高橋三郎",
+        email: "takahashi@example.com",
+        lineUserId: "line-4",
+        emailNotificationEnabled: true,
+        lineNotificationEnabled: false,
+      },
+      channelMode: "line",
+      template: { bodyText: "{{氏名}}様、前日リマインドです。", subject: "{{氏名}}様へ" },
+      templateType: "reminder",
+      tags: { 氏名: "高橋三郎" },
+      now,
+    });
+
+    expect(status).toBe("skipped");
+    expect(sendLineMessage).not.toHaveBeenCalled();
+    expect(prisma.emailLineLog.create).not.toHaveBeenCalled();
   });
 });

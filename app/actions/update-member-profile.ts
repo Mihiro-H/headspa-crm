@@ -46,7 +46,10 @@ export interface UpdateMemberProfileParams {
   lineNotificationEnabled: boolean;
 }
 
-export type UpdateMemberProfileResult = { status: "updated" } | { status: "unauthorized" };
+export type UpdateMemberProfileResult =
+  | { status: "updated" }
+  | { status: "unauthorized" }
+  | { status: "line_not_linked" };
 
 export async function updateMemberProfile(
   params: UpdateMemberProfileParams,
@@ -56,6 +59,17 @@ export async function updateMemberProfile(
     return { status: "unauthorized" };
   }
   const memberId = Number(session.user.id);
+
+  if (params.lineNotificationEnabled) {
+    // LINE未連携の会員はLINE配信を有効にできない。クライアント側でチェックボックスを
+    // 無効化しているが、Server Actionは直接呼び出し可能な公開エンドポイントとして
+    // 扱い、ここでも必ず検証する（未連携の場合はfindUniqueを呼ばずに済ませる）。
+    const member = await prisma.member.findUnique({ where: { id: memberId } });
+    if (!member) return { status: "unauthorized" };
+    if (member.lineUserId === null) {
+      return { status: "line_not_linked" };
+    }
+  }
 
   await prisma.member.update({
     where: { id: memberId },

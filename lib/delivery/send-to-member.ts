@@ -9,6 +9,8 @@ export interface SendToMemberMember {
   name: string;
   email: string;
   lineUserId: string | null;
+  emailNotificationEnabled: boolean;
+  lineNotificationEnabled: boolean;
 }
 
 export interface SendToMemberTemplate {
@@ -27,8 +29,15 @@ export interface SendToMemberParams {
 
 export async function sendToMemberAndLog(
   params: SendToMemberParams,
-): Promise<"success" | "failed"> {
-  const channel = resolveMemberChannel(params.channelMode, params.member.lineUserId);
+): Promise<"success" | "failed" | "skipped"> {
+  const channel = resolveMemberChannel(params.channelMode, params.member);
+
+  if (channel === "none") {
+    // 会員本人がメール・LINEどちらの配信も無効にしている（または希望チャネルが
+    // 未連携）ため、送信もログ記録もしない。これは失敗ではなく意図的な配信対象外。
+    return "skipped";
+  }
+
   const body = renderTemplate(params.template.bodyText, params.tags);
 
   let status: "success" | "failed";

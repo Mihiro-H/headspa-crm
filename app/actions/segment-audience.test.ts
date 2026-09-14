@@ -13,7 +13,11 @@ vi.mock("@/auth", () => ({
   auth: vi.fn(),
 }));
 
-const MEMBERS = [{ lineUserId: "line-1" }, { lineUserId: "line-2" }, { lineUserId: null }];
+const MEMBERS = [
+  { lineUserId: "line-1", emailNotificationEnabled: true, lineNotificationEnabled: true },
+  { lineUserId: "line-2", emailNotificationEnabled: true, lineNotificationEnabled: true },
+  { lineUserId: null, emailNotificationEnabled: true, lineNotificationEnabled: true },
+];
 
 describe("previewSegmentAudience", () => {
   beforeEach(() => {
@@ -64,7 +68,37 @@ describe("previewSegmentAudience", () => {
         statusId: 2,
         primaryStoreId: 1,
       },
-      select: { lineUserId: true },
+      select: { lineUserId: true, emailNotificationEnabled: true, lineNotificationEnabled: true },
     });
+  });
+
+  it("excludes a member who disabled email and has no LINE from auto-mode counts entirely", async () => {
+    vi.mocked(prisma.member.findMany).mockResolvedValue([
+      { lineUserId: null, emailNotificationEnabled: false, lineNotificationEnabled: true },
+    ] as never);
+
+    const result = await previewSegmentAudience({}, "auto");
+
+    expect(result).toEqual({ totalCount: 0, lineCount: 0, emailCount: 0 });
+  });
+
+  it("excludes a LINE-linked member who disabled LINE notifications from line-mode counts", async () => {
+    vi.mocked(prisma.member.findMany).mockResolvedValue([
+      { lineUserId: "line-3", emailNotificationEnabled: true, lineNotificationEnabled: false },
+    ] as never);
+
+    const result = await previewSegmentAudience({}, "line");
+
+    expect(result).toEqual({ totalCount: 0, lineCount: 0, emailCount: 0 });
+  });
+
+  it("falls back a LINE-disabled member to the email count in auto mode", async () => {
+    vi.mocked(prisma.member.findMany).mockResolvedValue([
+      { lineUserId: "line-3", emailNotificationEnabled: true, lineNotificationEnabled: false },
+    ] as never);
+
+    const result = await previewSegmentAudience({}, "auto");
+
+    expect(result).toEqual({ totalCount: 1, lineCount: 0, emailCount: 1 });
   });
 });

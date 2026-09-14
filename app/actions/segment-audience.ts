@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { buildMemberWhereClause, type CustomerFilterCondition } from "@/lib/customer/filter";
+import { resolveMemberChannel } from "@/lib/delivery/resolve-channel";
 
 export type SegmentChannelMode = "email" | "line" | "auto";
 export type SegmentCondition = CustomerFilterCondition;
@@ -28,18 +29,18 @@ export async function previewSegmentAudience(
 
   const members = await prisma.member.findMany({
     where: buildMemberWhereClause(condition),
-    select: { lineUserId: true },
+    select: { lineUserId: true, emailNotificationEnabled: true, lineNotificationEnabled: true },
   });
 
-  const eligible =
-    channelMode === "line" ? members.filter((m) => m.lineUserId !== null) : members;
-
-  const lineCount =
-    channelMode === "email" ? 0 : eligible.filter((m) => m.lineUserId !== null).length;
-  const emailCount = channelMode === "line" ? 0 : eligible.length - lineCount;
+  // 実際の配信ロジック（resolveMemberChannel）と同じ判定を使うことで、
+  // ここでのプレビュー人数と実際の送信対象がズレないようにする
+  // （会員本人が配信を無効にしている場合はどちらのカウントにも入らない）。
+  const channels = members.map((m) => resolveMemberChannel(channelMode, m));
+  const lineCount = channels.filter((c) => c === "line").length;
+  const emailCount = channels.filter((c) => c === "email").length;
 
   return {
-    totalCount: eligible.length,
+    totalCount: lineCount + emailCount,
     lineCount,
     emailCount,
   };

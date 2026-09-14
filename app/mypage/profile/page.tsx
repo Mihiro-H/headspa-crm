@@ -50,7 +50,13 @@ export default function MemberProfilePage() {
       lineNotificationEnabled: profile.lineNotificationEnabled,
     });
     setSavingProfile(false);
-    setProfileMessage(result.status === "updated" ? "保存しました。" : "保存に失敗しました。");
+    if (result.status === "updated") {
+      setProfileMessage("保存しました。");
+    } else if (result.status === "line_not_linked") {
+      setProfileMessage("LINE連携がされていないため、LINE配信は有効にできません。");
+    } else {
+      setProfileMessage("保存に失敗しました。");
+    }
   }
 
   async function handlePasswordSave() {
@@ -131,13 +137,19 @@ export default function MemberProfilePage() {
           />
           メール配信を受け取る
         </label>
-        <label className="flex items-center gap-2 text-sm text-neutral-700">
+        <label
+          className={`flex items-center gap-2 text-sm ${
+            profile.lineLinked ? "text-neutral-700" : "text-neutral-400"
+          }`}
+        >
           <input
             type="checkbox"
             checked={profile.lineNotificationEnabled}
+            disabled={!profile.lineLinked}
             onChange={(e) => setProfile({ ...profile, lineNotificationEnabled: e.target.checked })}
           />
           LINE配信を受け取る
+          {!profile.lineLinked && "（LINE連携が必要です）"}
         </label>
 
         <button

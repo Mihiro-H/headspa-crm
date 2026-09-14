@@ -64,7 +64,14 @@ describe("createSegmentCampaign", () => {
   it("creates a record without sending when scheduledAt is given", async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: "9", role: "hq" } } as never);
     vi.mocked(prisma.member.findMany).mockResolvedValue([
-      { id: 1, name: "山田太郎", email: "yamada@example.com", lineUserId: null },
+      {
+        id: 1,
+        name: "山田太郎",
+        email: "yamada@example.com",
+        lineUserId: null,
+        emailNotificationEnabled: true,
+        lineNotificationEnabled: true,
+      },
     ] as never);
     vi.mocked(prisma.segmentCampaign.create).mockResolvedValue({ id: 100 } as never);
 
@@ -96,8 +103,22 @@ describe("createSegmentCampaign", () => {
   it("sends immediately and logs success/failure per member when scheduledAt is null", async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: "9", role: "hq" } } as never);
     vi.mocked(prisma.member.findMany).mockResolvedValue([
-      { id: 1, name: "山田太郎", email: "yamada@example.com", lineUserId: "line-1" },
-      { id: 2, name: "鈴木花子", email: "suzuki@example.com", lineUserId: null },
+      {
+        id: 1,
+        name: "山田太郎",
+        email: "yamada@example.com",
+        lineUserId: "line-1",
+        emailNotificationEnabled: true,
+        lineNotificationEnabled: true,
+      },
+      {
+        id: 2,
+        name: "鈴木花子",
+        email: "suzuki@example.com",
+        lineUserId: null,
+        emailNotificationEnabled: true,
+        lineNotificationEnabled: true,
+      },
     ] as never);
     vi.mocked(prisma.segmentCampaign.create).mockResolvedValue({ id: 101 } as never);
     vi.mocked(prisma.deliveryTemplate.findUniqueOrThrow).mockResolvedValue({
@@ -168,8 +189,22 @@ describe("createSegmentCampaign", () => {
   it("excludes non-LINE-linked members from the target list in line-only mode", async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: "9", role: "hq" } } as never);
     vi.mocked(prisma.member.findMany).mockResolvedValue([
-      { id: 1, name: "山田太郎", email: "yamada@example.com", lineUserId: "line-1" },
-      { id: 2, name: "鈴木花子", email: "suzuki@example.com", lineUserId: null },
+      {
+        id: 1,
+        name: "山田太郎",
+        email: "yamada@example.com",
+        lineUserId: "line-1",
+        emailNotificationEnabled: true,
+        lineNotificationEnabled: true,
+      },
+      {
+        id: 2,
+        name: "鈴木花子",
+        email: "suzuki@example.com",
+        lineUserId: null,
+        emailNotificationEnabled: true,
+        lineNotificationEnabled: true,
+      },
     ] as never);
     vi.mocked(prisma.segmentCampaign.create).mockResolvedValue({ id: 102 } as never);
 
@@ -182,6 +217,56 @@ describe("createSegmentCampaign", () => {
     });
 
     expect(result).toEqual({ status: "scheduled", campaignId: 102, targetCount: 1 });
+  });
+
+  it("excludes a member who disabled LINE notifications from line-only targets even if LINE-linked", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "9", role: "hq" } } as never);
+    vi.mocked(prisma.member.findMany).mockResolvedValue([
+      {
+        id: 1,
+        name: "山田太郎",
+        email: "yamada@example.com",
+        lineUserId: "line-1",
+        emailNotificationEnabled: true,
+        lineNotificationEnabled: false,
+      },
+    ] as never);
+    vi.mocked(prisma.segmentCampaign.create).mockResolvedValue({ id: 103 } as never);
+
+    const result = await createSegmentCampaign({
+      name: "LINE限定配信",
+      condition: {},
+      channelMode: "line",
+      templateId: 1,
+      scheduledAt: "2026-10-01T09:00:00.000Z",
+    });
+
+    expect(result).toEqual({ status: "scheduled", campaignId: 103, targetCount: 0 });
+  });
+
+  it("excludes a member who disabled email notifications and has no LINE from auto-mode targets", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "9", role: "hq" } } as never);
+    vi.mocked(prisma.member.findMany).mockResolvedValue([
+      {
+        id: 1,
+        name: "山田太郎",
+        email: "yamada@example.com",
+        lineUserId: null,
+        emailNotificationEnabled: false,
+        lineNotificationEnabled: true,
+      },
+    ] as never);
+    vi.mocked(prisma.segmentCampaign.create).mockResolvedValue({ id: 104 } as never);
+
+    const result = await createSegmentCampaign({
+      name: "全体配信",
+      condition: {},
+      channelMode: "auto",
+      templateId: 1,
+      scheduledAt: "2026-10-01T09:00:00.000Z",
+    });
+
+    expect(result).toEqual({ status: "scheduled", campaignId: 104, targetCount: 0 });
   });
 });
 

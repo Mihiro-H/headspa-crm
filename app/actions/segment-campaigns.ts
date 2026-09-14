@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { buildMemberWhereClause, type CustomerFilterCondition } from "@/lib/customer/filter";
 import { renderTemplate } from "@/lib/delivery/render-template";
-import { resolveMemberChannel } from "@/lib/delivery/resolve-channel";
+import { isMemberEligibleForChannel, resolveMemberChannel } from "@/lib/delivery/resolve-channel";
 import { sendEmail } from "@/lib/delivery/send-email";
 import { sendLineMessage } from "@/lib/delivery/send-line";
 
@@ -45,8 +45,9 @@ export async function createSegmentCampaign(
   const members = await prisma.member.findMany({
     where: buildMemberWhereClause(params.condition),
   });
-  const targets =
-    params.channelMode === "line" ? members.filter((m) => m.lineUserId !== null) : members;
+  // メール/LINEどちらの配信も無効にしている会員（または希望チャネル未連携の会員）は、
+  // どのモードでも配信対象から除外する（isMemberEligibleForChannelに判定を一本化）。
+  const targets = members.filter((m) => isMemberEligibleForChannel(params.channelMode, m));
 
   const campaign = await prisma.segmentCampaign.create({
     data: {
@@ -74,7 +75,13 @@ export async function createSegmentCampaign(
   let failedCount = 0;
 
   for (const member of targets) {
-    const channel = resolveMemberChannel(params.channelMode, member.lineUserId);
+    const channel = resolveMemberChannel(params.channelMode, member);
+    if (channel === "none") {
+      // targetsは既にisMemberEligibleForChannelで絞り込み済みのため理論上は
+      // 到達しないが、Prisma側のDeliveryChannel型（email/lineのみ）に安全に
+      // 絞り込むためのガード。
+      continue;
+    }
     const body = renderTemplate(template.bodyText, { 氏名: member.name });
 
     let success: boolean;

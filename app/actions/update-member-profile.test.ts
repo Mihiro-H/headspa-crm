@@ -103,6 +103,10 @@ describe("updateMemberProfile", () => {
 
   it("updates using the authenticated member's id from the session", async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: "7", role: "member" } } as never);
+    vi.mocked(prisma.member.findUnique).mockResolvedValue({
+      id: 7,
+      lineUserId: "line-user-1",
+    } as never);
     vi.mocked(prisma.member.update).mockResolvedValue({} as never);
 
     const result = await updateMemberProfile({
@@ -126,6 +130,43 @@ describe("updateMemberProfile", () => {
         lineNotificationEnabled: true,
       },
     });
+  });
+
+  it("does not need to look up the member when lineNotificationEnabled is false", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "7", role: "member" } } as never);
+    vi.mocked(prisma.member.update).mockResolvedValue({} as never);
+
+    const result = await updateMemberProfile({
+      name: "田中 花子",
+      phone: "090-9999-8888",
+      birthMonth: 5,
+      gender: "female",
+      emailNotificationEnabled: true,
+      lineNotificationEnabled: false,
+    });
+
+    expect(result).toEqual({ status: "updated" });
+    expect(prisma.member.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("rejects enabling LINE notifications when the member has not linked a LINE account", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "7", role: "member" } } as never);
+    vi.mocked(prisma.member.findUnique).mockResolvedValue({
+      id: 7,
+      lineUserId: null,
+    } as never);
+
+    const result = await updateMemberProfile({
+      name: "田中 花子",
+      phone: "090-9999-8888",
+      birthMonth: 5,
+      gender: "female",
+      emailNotificationEnabled: true,
+      lineNotificationEnabled: true,
+    });
+
+    expect(result).toEqual({ status: "line_not_linked" });
+    expect(prisma.member.update).not.toHaveBeenCalled();
   });
 });
 
