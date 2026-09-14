@@ -82,15 +82,28 @@ function onFormSubmit(e) {
     answers[r.getItem().getTitle()] = r.getResponse();
   });
 
+  const yearMonthAnswer = answers[QUESTION_TITLES.yearMonth]; // 例: "2026-10"
+  const year = yearMonthAnswer.split("-")[0];
+
   const dayOffRaw = answers[QUESTION_TITLES.dayOff];
   // 日付の複数選択項目は配列で返ってくる場合と文字列（カンマ区切り）で
   // 返ってくる場合があるため両対応する
-  const dayOffDates = Array.isArray(dayOffRaw)
+  const dayOffMonthDayList = Array.isArray(dayOffRaw)
     ? dayOffRaw
     : (dayOffRaw || "").split(",").map((s) => s.trim()).filter((s) => s !== "");
 
+  // フォームの選択肢は「10/1」のようなM/D形式（対象年月の年を含まない）なので、
+  // 「対象年月」の回答から取り出した年と組み合わせてYYYY-MM-DD形式に変換する。
+  // ここで年を補完しないと、アプリ側は年なしの日付を解釈できずエラーになる。
+  const dayOffDates = dayOffMonthDayList.map((monthDay) => {
+    const parts = monthDay.split("/");
+    const month = parts[0].padStart(2, "0");
+    const day = parts[1].padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  });
+
   const payload = {
-    yearMonth: answers[QUESTION_TITLES.yearMonth],
+    yearMonth: yearMonthAnswer,
     staffLabel: answers[QUESTION_TITLES.staffLabel],
     dayOffDates: dayOffDates,
     reducedFreeText: answers[QUESTION_TITLES.reduced] || "",
@@ -105,6 +118,8 @@ function onFormSubmit(e) {
   });
 }
 ```
+
+フォームの選択肢は年を含まない`M/D`形式（`10/1`など）のため、Apps Script側で「対象年月」の回答（`2026-10`など）と組み合わせて`YYYY-MM-DD`形式に変換してからアプリに送信しています。アプリ側（Webhook実装）は年を含むISO形式（`YYYY-MM-DD`）の日付文字列を前提としているため、この変換を省略すると休み希望を1件でも選択した時点でWebhook処理全体が失敗します。
 
 貼り付け後、`WEBHOOK_URL`を実際にアプリをホストしているドメイン（本番URL）に書き換え、`WEBHOOK_SECRET`を後述の`.env`に設定する値と同じ文字列に書き換える。
 
