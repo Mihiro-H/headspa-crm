@@ -26,3 +26,23 @@ export async function findOrFlagLineMember(
     name: displayName,
   };
 }
+
+export type LinkLineToMemberResult = { status: "linked" } | { status: "already_linked_elsewhere" };
+
+/**
+ * メール/パスワードで既にログイン中の会員に、認証済みのLINEアカウントを後付けで
+ * 紐付ける（「LINEでログイン」する新規登録フローとは別の、既存会員向けの操作）。
+ * そのLINEアカウントが既に別の会員に紐付いている場合は、黙って上書き・統合せず拒否する。
+ */
+export async function linkLineToMember(
+  memberId: number,
+  lineUserId: string,
+): Promise<LinkLineToMemberResult> {
+  const existing = await prisma.member.findUnique({ where: { lineUserId } });
+  if (existing && existing.id !== memberId) {
+    return { status: "already_linked_elsewhere" };
+  }
+
+  await prisma.member.update({ where: { id: memberId }, data: { lineUserId } });
+  return { status: "linked" };
+}

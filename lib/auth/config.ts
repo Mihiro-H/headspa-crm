@@ -3,7 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import LineProvider from "next-auth/providers/line";
 import { authorizeMember } from "./member-credentials";
 import { authorizeAdmin } from "./admin-credentials";
-import { findOrFlagLineMember } from "./line-member";
+import { findOrFlagLineMember, linkLineToMember } from "./line-member";
 import { prisma } from "@/lib/db";
 import type { AdminRole } from "@prisma/client";
 
@@ -81,19 +81,26 @@ export const authConfig: NextAuthConfig = {
       }
 
       if (account?.provider === "line" && account.providerAccountId) {
-        const result = await findOrFlagLineMember(
-          account.providerAccountId,
-          (profile as { name?: string } | undefined)?.name ?? "",
-        );
-
-        if (result.status === "existing") {
-          token.id = result.id;
-          token.role = "member";
-          token.needsProfileCompletion = false;
+        if (token.role === "member" && token.id) {
+          // 既にメール/パスワードでログイン中の会員が「LINEと連携」した場合は、
+          // 新規ログイン/会員登録ではなく、今ログイン中の会員へのLINEアカウント
+          // 紐付けとして扱う（token.id/roleは変更せず、そのまま同じ会員でいる）。
+          await linkLineToMember(Number(token.id), account.providerAccountId);
         } else {
-          token.needsProfileCompletion = true;
-          token.pendingLineUserId = result.lineUserId;
-          token.pendingLineName = result.name;
+          const result = await findOrFlagLineMember(
+            account.providerAccountId,
+            (profile as { name?: string } | undefined)?.name ?? "",
+          );
+
+          if (result.status === "existing") {
+            token.id = result.id;
+            token.role = "member";
+            token.needsProfileCompletion = false;
+          } else {
+            token.needsProfileCompletion = true;
+            token.pendingLineUserId = result.lineUserId;
+            token.pendingLineName = result.name;
+          }
         }
       }
 

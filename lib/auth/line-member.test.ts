@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { findOrFlagLineMember } from "./line-member";
+import { findOrFlagLineMember, linkLineToMember } from "./line-member";
 import { prisma } from "@/lib/db";
 
 vi.mock("@/lib/db", () => ({
   prisma: {
     member: {
       findUnique: vi.fn(),
+      update: vi.fn(),
     },
   },
 }));
@@ -44,5 +45,44 @@ describe("findOrFlagLineMember", () => {
       lineUserId: "U9999999999",
       name: "花子",
     });
+  });
+});
+
+describe("linkLineToMember", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("links the LINE account to the member when it is not used by anyone else", async () => {
+    vi.mocked(prisma.member.findUnique).mockResolvedValue(null);
+
+    const result = await linkLineToMember(5, "U1234567890");
+
+    expect(result).toEqual({ status: "linked" });
+    expect(prisma.member.update).toHaveBeenCalledWith({
+      where: { id: 5 },
+      data: { lineUserId: "U1234567890" },
+    });
+  });
+
+  it("links (idempotently) when the LINE account is already linked to this same member", async () => {
+    vi.mocked(prisma.member.findUnique).mockResolvedValue({ id: 5, lineUserId: "U1234567890" } as never);
+
+    const result = await linkLineToMember(5, "U1234567890");
+
+    expect(result).toEqual({ status: "linked" });
+    expect(prisma.member.update).toHaveBeenCalledWith({
+      where: { id: 5 },
+      data: { lineUserId: "U1234567890" },
+    });
+  });
+
+  it("refuses to link when the LINE account is already linked to a different member", async () => {
+    vi.mocked(prisma.member.findUnique).mockResolvedValue({ id: 9, lineUserId: "U1234567890" } as never);
+
+    const result = await linkLineToMember(5, "U1234567890");
+
+    expect(result).toEqual({ status: "already_linked_elsewhere" });
+    expect(prisma.member.update).not.toHaveBeenCalled();
   });
 });

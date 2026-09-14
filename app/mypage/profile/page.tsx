@@ -1,13 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { signIn } from "next-auth/react";
+import { Eye, EyeOff, MessageCircle } from "lucide-react";
 import {
   getMemberProfile,
   updateMemberProfile,
   changeMemberPassword,
   type MemberProfile,
 } from "@/app/actions/update-member-profile";
+
+// signIn("line", ...)のcallbackUrlに付与し、リダイレクト後に「連携を試みた直後か」を
+// 判定するためのマーカー（NextAuthのセッション/トークンには連携成功・失敗の詳細を
+// 持たせず、単純にこのURLパラメータの有無とlineLinkedの最新値だけで表示を決める）。
+const LINE_LINK_CALLBACK_URL = "/mypage/profile?lineLink=1";
 
 const inputClass = "h-12 rounded-md border border-neutral-300 px-3";
 const passwordInputClass = "h-12 w-full rounded-md border border-neutral-300 px-3 pr-10";
@@ -22,6 +28,10 @@ export default function MemberProfilePage() {
   const [showPassword, setShowPassword] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
+
+  const [justAttemptedLineLink] = useState(
+    () => typeof window !== "undefined" && window.location.search.includes("lineLink=1"),
+  );
 
   useEffect(() => {
     getMemberProfile().then(setProfile);
@@ -202,6 +212,32 @@ export default function MemberProfilePage() {
         >
           {profile.hasPassword ? "パスワードを変更する" : "パスワードを設定する"}
         </button>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <h2 className="text-sm font-medium text-neutral-600">LINE連携</h2>
+        {profile.lineLinked ? (
+          <p className="text-sm text-neutral-700">LINE連携済みです。</p>
+        ) : (
+          <>
+            <p className="text-xs text-neutral-500">
+              メールアドレスでの登録に加えてLINEを連携すると、次回からLINEでもログインできるようになります。
+            </p>
+            {justAttemptedLineLink && (
+              <p className="text-sm text-error">
+                連携できませんでした。このLINEアカウントは既に別の会員に連携されている可能性があります。
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={() => signIn("line", { callbackUrl: LINE_LINK_CALLBACK_URL })}
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#06C755] font-medium text-white"
+            >
+              <MessageCircle className="h-5 w-5" aria-hidden="true" />
+              LINEと連携する
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
