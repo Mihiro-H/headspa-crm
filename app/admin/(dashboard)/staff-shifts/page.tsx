@@ -16,6 +16,7 @@ import {
   exportConfirmedShifts,
   type ConfirmedShiftRow,
 } from "@/app/actions/export-confirmed-shifts";
+import { getStaffFormRoster } from "@/app/actions/staff-form-roster";
 import { minutesToLabel } from "@/lib/reservation/time";
 
 function yearMonthWithOffset(monthOffset: number): string {
@@ -178,6 +179,17 @@ export default function StaffShiftsPage() {
     }
   }
 
+  async function handleCopyFormRoster() {
+    if (storeId === null) return;
+    const result = await getStaffFormRoster(storeId);
+    if (result.status === "ok") {
+      await navigator.clipboard.writeText(result.labels.join("\n"));
+      setMessage(`${result.labels.length}件をクリップボードにコピーしました。`);
+    } else {
+      setMessage("コピーに失敗しました。");
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-xl text-primary-700">スタッフシフト管理</h1>
@@ -228,6 +240,13 @@ export default function StaffShiftsPage() {
           className="h-10 rounded-lg border border-neutral-300 px-4 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
         >
           確定済みシフトをダウンロード（CSV）
+        </button>
+        <button
+          type="button"
+          onClick={handleCopyFormRoster}
+          className="h-10 rounded-lg border border-neutral-300 px-4 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+        >
+          フォーム用スタッフ一覧をコピー
         </button>
       </div>
 
