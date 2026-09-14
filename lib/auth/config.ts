@@ -60,6 +60,13 @@ export const authConfig: NextAuthConfig = {
   ],
   callbacks: {
     async jwt({ token, user, account, profile }) {
+      // 「LINEと連携」ボタンは、メール/パスワードで既にログイン中の会員セッションから
+      // signIn("line", ...)を呼ぶことで実現している。このとき下のif(user)ブロックが
+      // token.id/roleを今回のサインイン（LINE側のid・role未設定）の値で上書きして
+      // しまうため、上書きされる前に「元々ログイン中だった会員か」を先に控えておく。
+      const wasLoggedInAsMember = token.role === "member" && typeof token.id === "string";
+      const previousMemberId = token.id as string | undefined;
+
       if (user) {
         token.id = (user as { id: string }).id;
         token.role = (user as { role: string }).role;
@@ -81,11 +88,13 @@ export const authConfig: NextAuthConfig = {
       }
 
       if (account?.provider === "line" && account.providerAccountId) {
-        if (token.role === "member" && token.id) {
-          // 既にメール/パスワードでログイン中の会員が「LINEと連携」した場合は、
-          // 新規ログイン/会員登録ではなく、今ログイン中の会員へのLINEアカウント
-          // 紐付けとして扱う（token.id/roleは変更せず、そのまま同じ会員でいる）。
-          await linkLineToMember(Number(token.id), account.providerAccountId);
+        if (wasLoggedInAsMember && previousMemberId) {
+          // 新規ログイン/会員登録ではなく、元々ログイン中だった会員へのLINEアカウント
+          // 紐付けとして扱う。上のif(user)ブロックでtoken.id/roleがLINE側の値に
+          // 上書きされてしまっているので、元の会員のセッションに戻す。
+          await linkLineToMember(Number(previousMemberId), account.providerAccountId);
+          token.id = previousMemberId;
+          token.role = "member";
         } else {
           const result = await findOrFlagLineMember(
             account.providerAccountId,
