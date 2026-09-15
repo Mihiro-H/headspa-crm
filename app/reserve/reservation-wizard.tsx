@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { WizardProgress } from "@/components/reservation/wizard-progress";
 import { StoreSelectStep } from "@/components/reservation/store-select-step";
@@ -39,6 +39,7 @@ export function ReservationWizard({ memberGender }: { memberGender: MemberGender
     errorMessage: null,
   });
   const [confirming, setConfirming] = useState(false);
+  const confirmingRef = useRef(false);
   const [stores, setStores] = useState<StoreListItem[]>([]);
   const [categories, setCategories] = useState<CourseCategoryListItem[]>([]);
   const [courses, setCourses] = useState<CourseListItem[]>([]);
@@ -130,8 +131,15 @@ export function ReservationWizard({ memberGender }: { memberGender: MemberGender
 
   async function handleConfirm() {
     if (state.reservationId === null) return;
+    // confirmingステートの更新はReactの再描画を待つため反映に一瞬遅れがあり、
+    // 素早い連打・トラックパッドの誤爆等で「予約する」ボタンが無効化される前に
+    // 2回目のクリックが素通りしてconfirmReservationが二重に呼ばれることがある。
+    // refは同期的に即反映されるため、ここで確実に二重実行をブロックする。
+    if (confirmingRef.current) return;
+    confirmingRef.current = true;
     setConfirming(true);
     const result = await confirmReservation({ reservationId: state.reservationId });
+    confirmingRef.current = false;
     setConfirming(false);
 
     if (result.status !== "confirmed") {

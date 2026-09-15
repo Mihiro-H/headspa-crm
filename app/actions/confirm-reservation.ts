@@ -32,7 +32,18 @@ export async function confirmReservation(
     where: { id: params.reservationId },
   });
 
-  if (!reservation || reservation.status !== "temp_hold") {
+  if (!reservation) {
+    return { status: "not_found" };
+  }
+
+  // 二重送信（ボタンの連打・再送信等）で、既に自分自身が確定済みの予約に対して
+  // もう一度confirmReservationが呼ばれた場合は、エラーではなく成功として扱う。
+  // ここで早期returnすることで、通知等の副作用が再度実行されるのも防ぐ。
+  if (reservation.status === "confirmed" && reservation.memberId === memberId) {
+    return { status: "confirmed" };
+  }
+
+  if (reservation.status !== "temp_hold") {
     return { status: "not_found" };
   }
 

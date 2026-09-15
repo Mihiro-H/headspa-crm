@@ -151,6 +151,38 @@ describe("confirmReservation", () => {
     expect(result).toEqual({ status: "not_found" });
   });
 
+  it("treats a double-submission of a reservation already confirmed by the same member as success, without resending side effects", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "5", role: "member" } } as never);
+    vi.mocked(prisma.reservation.findUnique).mockResolvedValue({
+      id: 99,
+      status: "confirmed",
+      memberId: 5,
+      tempHoldExpiresAt: null,
+    } as never);
+
+    const result = await confirmReservation({ reservationId: 99 });
+
+    expect(result).toEqual({ status: "confirmed" });
+    expect(prisma.reservation.update).not.toHaveBeenCalled();
+    expect(createNotification).not.toHaveBeenCalled();
+    expect(sendReservationConfirmation).not.toHaveBeenCalled();
+  });
+
+  it("does not treat a reservation confirmed by a different member as this member's own", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "5", role: "member" } } as never);
+    vi.mocked(prisma.reservation.findUnique).mockResolvedValue({
+      id: 99,
+      status: "confirmed",
+      memberId: 6,
+      tempHoldExpiresAt: null,
+    } as never);
+
+    const result = await confirmReservation({ reservationId: 99 });
+
+    expect(result).toEqual({ status: "not_found" });
+    expect(prisma.reservation.update).not.toHaveBeenCalled();
+  });
+
   it("rejects when the reservation does not exist", async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: "5", role: "member" } } as never);
     vi.mocked(prisma.reservation.findUnique).mockResolvedValue(null as never);
