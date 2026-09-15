@@ -4,15 +4,17 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { MessageCircle, Eye, EyeOff } from "lucide-react";
 import { registerMember } from "@/app/actions/register-member";
+import { LINE_RESUME_STORAGE_KEY, type WizardState } from "@/components/reservation/wizard-state";
 
 interface AuthStepProps {
+  wizardState: WizardState;
   onAuthenticated: () => void;
 }
 
 const inputClass = "h-12 w-full rounded-md border border-neutral-300 px-3";
 const passwordInputClass = "h-12 w-full rounded-md border border-neutral-300 px-3 pr-10";
 
-export function AuthStep({ onAuthenticated }: AuthStepProps) {
+export function AuthStep({ wizardState, onAuthenticated }: AuthStepProps) {
   const [mode, setMode] = useState<"register" | "login">("register");
   const [form, setForm] = useState({
     name: "",
@@ -50,6 +52,14 @@ export function AuthStep({ onAuthenticated }: AuthStepProps) {
     }
   }
 
+  function handleLineSignIn() {
+    // signIn("line")はLINEの認証画面への本物のページ遷移を伴い、戻ってきた時点で
+    // このコンポーネントを含むウィザード全体のReact stateは消えている。遷移前に
+    // 現在の状態を保存し、reservation-wizard.tsx側で戻ってきた直後に復元する。
+    sessionStorage.setItem(LINE_RESUME_STORAGE_KEY, JSON.stringify(wizardState));
+    signIn("line");
+  }
+
   async function handleLogin() {
     setSubmitting(true);
     setError(null);
@@ -73,7 +83,7 @@ export function AuthStep({ onAuthenticated }: AuthStepProps) {
       <div className="flex flex-col gap-2">
         <button
           type="button"
-          onClick={() => signIn("line")}
+          onClick={handleLineSignIn}
           className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#06C755] font-medium text-white"
         >
           <MessageCircle className="h-5 w-5" aria-hidden="true" />

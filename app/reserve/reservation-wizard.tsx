@@ -21,21 +21,9 @@ import { createTempHoldReservation } from "@/app/actions/create-temp-hold";
 import { confirmReservation } from "@/app/actions/confirm-reservation";
 import { minutesToLabel } from "@/lib/reservation/time";
 import type { MemberGender } from "@/lib/reservation/gender-restriction";
+import { LINE_RESUME_STORAGE_KEY, parseLineResumeState, type WizardState } from "@/components/reservation/wizard-state";
 
 const TOTAL_STEPS = 9;
-
-interface WizardState {
-  step: number;
-  storeId: number | null;
-  categoryId: number | null;
-  courseId: number | null;
-  optionIds: number[];
-  staffId: number | null;
-  reservationDate: string | null;
-  startTimeLabel: string | null;
-  reservationId: number | null;
-  errorMessage: string | null;
-}
 
 export function ReservationWizard({ memberGender }: { memberGender: MemberGender | null }) {
   const [state, setState] = useState<WizardState>({
@@ -56,6 +44,33 @@ export function ReservationWizard({ memberGender }: { memberGender: MemberGender
   const [courses, setCourses] = useState<CourseListItem[]>([]);
   const [options, setOptions] = useState<OptionListItem[]>([]);
   const [staff, setStaff] = useState<StaffListItem[]>([]);
+
+  // LINEログインから戻ってきた直後、フルページ遷移で消えてしまったウィザードの
+  // 状態をsessionStorageから復元する（LINE_RESUME_STORAGE_KEYの保存元は
+  // auth-step.tsxのLINEログインボタン）。保存が無い通常の初回表示では何もしない。
+  useEffect(() => {
+    const saved = sessionStorage.getItem(LINE_RESUME_STORAGE_KEY);
+    sessionStorage.removeItem(LINE_RESUME_STORAGE_KEY);
+    const restored = parseLineResumeState(saved);
+    if (!restored) return;
+
+    // sessionStorage（外部システム）から復元した値をstateに反映するためのeffect。
+    // 通常のデータ取得（.then(setter)）とは違い同期的な代入だが、これは
+    // マウント時に一度だけsessionStorageと同期する必要がある正当なケース。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setState(restored);
+
+    // 確認画面（step 8）はcourses/options/staffの一覧を表示に使うが、
+    // 通常のstep遷移（step===3/4/5時点の各useEffect）を経由せずstep 8へ
+    // 直接ジャンプするため、ここで明示的に取得しておく。
+    if (restored.categoryId !== null && restored.storeId !== null) {
+      listCoursesForCategory(restored.categoryId, restored.storeId).then(setCourses);
+    }
+    listOptions().then(setOptions);
+    if (restored.storeId !== null) {
+      listStaffForStore(restored.storeId).then(setStaff);
+    }
+  }, []);
 
   useEffect(() => {
     listStores().then(setStores);
@@ -227,7 +242,7 @@ export function ReservationWizard({ memberGender }: { memberGender: MemberGender
       )}
 
       {state.step === 7 && (
-        <AuthStep onAuthenticated={() => setState((s) => ({ ...s, step: 8 }))} />
+        <AuthStep wizardState={state} onAuthenticated={() => setState((s) => ({ ...s, step: 8 }))} />
       )}
 
       {state.step === 8 && state.reservationDate !== null && state.startTimeLabel !== null && (
