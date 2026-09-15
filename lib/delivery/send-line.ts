@@ -32,10 +32,17 @@ export async function sendLineMessage(
     });
 
     if (!response.ok) {
-      return { status: "failed", error: `LINE API error: ${response.status}` };
+      const body = await response.text();
+      const error = `LINE API error: ${response.status} ${body}`;
+      // 呼び出し元（sendToMemberAndLog）はstatus文字列だけを見てこの詳細を
+      // 捨ててしまうため、ここでログしないと失敗理由（未フォロー等）を追えなくなる。
+      console.error("sendLineMessage failed:", error);
+      return { status: "failed", error };
     }
     return { status: "sent" };
   } catch (error) {
-    return { status: "failed", error: error instanceof Error ? error.message : "unknown error" };
+    const message = error instanceof Error ? error.message : "unknown error";
+    console.error("sendLineMessage failed:", message);
+    return { status: "failed", error: message };
   }
 }

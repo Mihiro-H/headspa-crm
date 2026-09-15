@@ -6,6 +6,7 @@ describe("sendLineMessage", () => {
 
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
+    vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -42,13 +43,21 @@ describe("sendLineMessage", () => {
     );
   });
 
-  it("returns failed when the LINE API responds with an error status", async () => {
+  it("returns failed with the response body when the LINE API responds with an error status", async () => {
     process.env.LINE_MESSAGING_CHANNEL_ACCESS_TOKEN = "test-token";
-    vi.mocked(fetch).mockResolvedValue({ ok: false, status: 400 } as Response);
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: () => Promise.resolve('{"message":"The user hasn\'t added the bot as a friend."}'),
+    } as unknown as Response);
 
     const result = await sendLineMessage({ lineUserId: "line-user-1", body: "本文" });
 
-    expect(result).toEqual({ status: "failed", error: "LINE API error: 400" });
+    expect(result).toEqual({
+      status: "failed",
+      error: 'LINE API error: 400 {"message":"The user hasn\'t added the bot as a friend."}',
+    });
+    expect(console.error).toHaveBeenCalledWith("sendLineMessage failed:", expect.any(String));
   });
 
   it("returns failed when fetch throws", async () => {
@@ -58,5 +67,6 @@ describe("sendLineMessage", () => {
     const result = await sendLineMessage({ lineUserId: "line-user-1", body: "本文" });
 
     expect(result).toEqual({ status: "failed", error: "network error" });
+    expect(console.error).toHaveBeenCalledWith("sendLineMessage failed:", "network error");
   });
 });
