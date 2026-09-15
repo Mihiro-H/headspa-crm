@@ -45,6 +45,27 @@ describe("resolveAccessDecision", () => {
     });
   });
 
+  it("redirects a brand-new LINE signup (no member yet) to complete their profile, not to /login", () => {
+    expect(resolveAccessDecision("/mypage", undefined, [], true)).toEqual({
+      type: "redirect",
+      to: "/register/line-complete?next=%2Fmypage",
+    });
+  });
+
+  it("preserves the originally-requested mypage subpath in the profile-completion redirect", () => {
+    expect(resolveAccessDecision("/mypage/history", undefined, [], true)).toEqual({
+      type: "redirect",
+      to: "/register/line-complete?next=%2Fmypage%2Fhistory",
+    });
+  });
+
+  it("does not redirect to profile completion for the /admin area", () => {
+    expect(resolveAccessDecision("/admin/dashboard", undefined, [], true)).toEqual({
+      type: "redirect",
+      to: "/admin/login",
+    });
+  });
+
   it("allows any other route through untouched", () => {
     expect(resolveAccessDecision("/", undefined)).toEqual({ type: "allow" });
   });

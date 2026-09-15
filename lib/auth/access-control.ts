@@ -11,6 +11,7 @@ export function resolveAccessDecision(
   pathname: string,
   role: string | undefined,
   hiddenPageKeys: string[] = [],
+  needsProfileCompletion = false,
 ): AccessDecision {
   // /admin/accept-inviteの例外はPhase Hで追加済み（アカウント招待の受諾ページを未認証で許可するため）。
   const isPublicAdminPage =
@@ -23,6 +24,15 @@ export function resolveAccessDecision(
   }
 
   if (isMemberArea && role !== "member") {
+    // LINEでの認証自体は済んでいるが、まだ会員レコードが存在しない
+    // （氏名・メール未入力の）新規ユーザー。/loginに戻すと振り出しに戻ってしまうため、
+    // 元々アクセスしようとしていたパスを戻り先として持たせたまま登録完了画面へ送る。
+    if (needsProfileCompletion) {
+      return {
+        type: "redirect",
+        to: `/register/line-complete?next=${encodeURIComponent(pathname)}`,
+      };
+    }
     return { type: "redirect", to: "/login" };
   }
 

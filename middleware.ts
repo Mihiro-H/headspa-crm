@@ -7,6 +7,7 @@ export default auth((req) => {
     req.nextUrl.pathname,
     req.auth?.user?.role,
     req.auth?.hiddenPageKeys ?? [],
+    req.auth?.needsProfileCompletion ?? false,
   );
 
   if (decision.type === "redirect") {

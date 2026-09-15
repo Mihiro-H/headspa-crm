@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { WizardProgress } from "@/components/reservation/wizard-progress";
 import { StoreSelectStep } from "@/components/reservation/store-select-step";
 import { CategorySelectStep } from "@/components/reservation/category-select-step";
@@ -19,6 +20,7 @@ import { listOptions, type OptionListItem } from "@/app/actions/options";
 import { listStaffForStore, type StaffListItem } from "@/app/actions/staff";
 import { createTempHoldReservation } from "@/app/actions/create-temp-hold";
 import { confirmReservation } from "@/app/actions/confirm-reservation";
+import { getPendingLineSignup } from "@/app/actions/line-registration";
 import { minutesToLabel } from "@/lib/reservation/time";
 import type { MemberGender } from "@/lib/reservation/gender-restriction";
 import { LINE_RESUME_STORAGE_KEY, parseLineResumeState, type WizardState } from "@/components/reservation/wizard-state";
@@ -26,6 +28,7 @@ import { LINE_RESUME_STORAGE_KEY, parseLineResumeState, type WizardState } from 
 const TOTAL_STEPS = 9;
 
 export function ReservationWizard({ memberGender }: { memberGender: MemberGender | null }) {
+  const router = useRouter();
   const [state, setState] = useState<WizardState>({
     step: 1,
     storeId: null,
@@ -50,28 +53,40 @@ export function ReservationWizard({ memberGender }: { memberGender: MemberGender
   // 状態をsessionStorageから復元する（LINE_RESUME_STORAGE_KEYの保存元は
   // auth-step.tsxのLINEログインボタン）。保存が無い通常の初回表示では何もしない。
   useEffect(() => {
+    // 通常の初回アクセス（LINEログインから戻ってきたのではない）では
+    // 何も保存されていないため、サーバーへの問い合わせ自体を行わない。
     const saved = sessionStorage.getItem(LINE_RESUME_STORAGE_KEY);
-    sessionStorage.removeItem(LINE_RESUME_STORAGE_KEY);
-    const restored = parseLineResumeState(saved);
-    if (!restored) return;
+    if (!saved) return;
 
-    // sessionStorage（外部システム）から復元した値をstateに反映するためのeffect。
-    // 通常のデータ取得（.then(setter)）とは違い同期的な代入だが、これは
-    // マウント時に一度だけsessionStorageと同期する必要がある正当なケース。
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setState(restored);
+    getPendingLineSignup().then((pending) => {
+      if (pending.status === "pending") {
+        // 完全新規のLINEユーザー（まだ会員レコードが無い）。氏名・メールの入力が
+        // 完了するまで、保存済みのウィザード状態はsessionStorageに残したまま
+        // （まだ消費しない）にして、登録完了画面へ送る。
+        router.push("/register/line-complete?next=/reserve");
+        return;
+      }
 
-    // 確認画面（step 8）はcourses/options/staffの一覧を表示に使うが、
-    // 通常のstep遷移（step===3/4/5時点の各useEffect）を経由せずstep 8へ
-    // 直接ジャンプするため、ここで明示的に取得しておく。
-    if (restored.categoryId !== null && restored.storeId !== null) {
-      listCoursesForCategory(restored.categoryId, restored.storeId).then(setCourses);
-    }
-    listOptions().then(setOptions);
-    if (restored.storeId !== null) {
-      listStaffForStore(restored.storeId).then(setStaff);
-    }
-  }, []);
+      // 既存会員としてログイン済み（または通常のLINE連携）。ここで初めて
+      // sessionStorageを消費する。
+      sessionStorage.removeItem(LINE_RESUME_STORAGE_KEY);
+      const restored = parseLineResumeState(saved);
+      if (!restored) return;
+
+      setState(restored);
+
+      // 確認画面（step 8）はcourses/options/staffの一覧を表示に使うが、
+      // 通常のstep遷移（step===3/4/5時点の各useEffect）を経由せずstep 8へ
+      // 直接ジャンプするため、ここで明示的に取得しておく。
+      if (restored.categoryId !== null && restored.storeId !== null) {
+        listCoursesForCategory(restored.categoryId, restored.storeId).then(setCourses);
+      }
+      listOptions().then(setOptions);
+      if (restored.storeId !== null) {
+        listStaffForStore(restored.storeId).then(setStaff);
+      }
+    });
+  }, [router]);
 
   useEffect(() => {
     listStores().then(setStores);
