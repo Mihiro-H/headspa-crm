@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   getInviteDetails,
   acceptAdminInvite,
@@ -16,10 +16,17 @@ type LoadState =
 
 const MIN_PASSWORD_LENGTH = 8;
 
+// useSearchParams()はSuspenseバウンダリで囲む必要があり（囲まないと
+// ビルド時の静的プリレンダリングが失敗する）、このページ単体をSuspenseで
+// 包むほどの理由もないため、mypage/profile/page.tsx等と同じくURLを直接読む。
+function readTokenFromUrl(): string {
+  if (typeof window === "undefined") return "";
+  return new URLSearchParams(window.location.search).get("token") ?? "";
+}
+
 export default function AcceptAdminInvitePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const token = searchParams.get("token") ?? "";
+  const [token] = useState(readTokenFromUrl);
 
   const [loadState, setLoadState] = useState<LoadState>(() =>
     token ? { status: "loading" } : { status: "invalid" },

@@ -1,5 +1,11 @@
 import { getTermsOfService } from "@/app/actions/terms-of-service";
 
+// このページは認証済みセッションを読まないためNext.jsが静的にプリレンダリング
+// できてしまうが、管理画面（/admin/terms）から内容を更新できる以上、
+// ビルド時点の内容のまま固定表示されては困る。常にリクエスト時点の最新内容を
+// 取得する。
+export const dynamic = "force-dynamic";
+
 export default async function TermsPage() {
   const bodyText = await getTermsOfService();
 

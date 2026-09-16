@@ -6,7 +6,7 @@ import type { AdminRole, PermissionLevel } from "@prisma/client";
 
 // Server Actionはページのミドルウェアガードに関わらず直接呼び出せるため、
 // 管理者向けアクションは必ずそれぞれの関数内でセッションを検証する。
-const ADMIN_ROLES = new Set<AdminRole>(["hq", "manager", "staff"]);
+const ADMIN_ROLES = new Set(["hq", "manager", "staff"]);
 
 export interface PagePermissionItem {
   role: AdminRole;

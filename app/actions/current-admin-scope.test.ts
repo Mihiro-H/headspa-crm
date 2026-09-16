@@ -41,7 +41,7 @@ describe("getCurrentAdminStoreScope", () => {
   });
 
   it("returns a restricted empty scope when there is no session", async () => {
-    vi.mocked(auth).mockResolvedValue(null);
+    vi.mocked(auth).mockResolvedValue(null as never);
 
     const result = await getCurrentAdminStoreScope();
 
