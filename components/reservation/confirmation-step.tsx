@@ -1,12 +1,14 @@
 import { calculateCancellationDeadline } from "@/lib/reservation/cancellation-deadline";
 import { formatJapaneseDate } from "@/lib/reservation/date-format";
 import type { StoreListItem } from "@/app/actions/stores";
+import type { CourseCategoryListItem } from "@/app/actions/course-categories";
 import type { CourseListItem } from "@/app/actions/courses";
 import type { OptionListItem } from "@/app/actions/options";
 import type { StaffListItem } from "@/app/actions/staff";
 
 interface ConfirmationStepProps {
   store: StoreListItem | undefined;
+  category: CourseCategoryListItem | undefined;
   course: CourseListItem | undefined;
   options: OptionListItem[];
   staff: StaffListItem | undefined;
@@ -23,6 +25,7 @@ function formatYen(amount: number): string {
 
 export function ConfirmationStep({
   store,
+  category,
   course,
   options,
   staff,
@@ -47,6 +50,10 @@ export function ConfirmationStep({
         <p className="text-neutral-800">
           <span className="text-neutral-500">店舗：</span>
           {store?.name}
+        </p>
+        <p className="text-neutral-800">
+          <span className="text-neutral-500">メニュー：</span>
+          {category?.name}
         </p>
         <p className="text-neutral-800">
           <span className="text-neutral-500">コース：</span>

@@ -176,6 +176,7 @@ export function ReservationWizard({ memberGender }: { memberGender: MemberGender
   }
 
   const selectedStore = stores.find((s) => s.id === state.storeId);
+  const selectedCategory = categories.find((c) => c.id === state.categoryId);
   const selectedCourse = courses.find((c) => c.id === state.courseId);
   const selectedOptions = options.filter((o) => state.optionIds.includes(o.id));
   const selectedStaff = staff.find((s) => s.id === state.staffId);
@@ -271,6 +272,7 @@ export function ReservationWizard({ memberGender }: { memberGender: MemberGender
       {state.step === 8 && state.reservationDate !== null && state.startTimeLabel !== null && (
         <ConfirmationStep
           store={selectedStore}
+          category={selectedCategory}
           course={selectedCourse}
           options={selectedOptions}
           staff={selectedStaff}
